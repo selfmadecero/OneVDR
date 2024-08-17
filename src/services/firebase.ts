@@ -23,7 +23,8 @@ export const storage = getStorage(app);
 
 export const addFileInfo = async (userId: string, fileInfo: FileInfo) => {
   try {
-    await setDoc(doc(db, 'users', userId, 'files', fileInfo.name), fileInfo);
+    const fileRef = doc(db, 'users', userId, 'files', fileInfo.name);
+    await setDoc(fileRef, fileInfo);
   } catch (error) {
     console.error('Error adding file info to Firestore:', error);
     throw error;

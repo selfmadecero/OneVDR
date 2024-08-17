@@ -7,7 +7,7 @@ export interface User {
 export interface FileInfo {
   name: string;
   url: string;
-  analysis: string;
+  analysis: string | any;
   uploadDate: string;
   size: string;
 }

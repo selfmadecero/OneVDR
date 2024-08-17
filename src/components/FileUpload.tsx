@@ -10,9 +10,8 @@ import { useDropzone } from 'react-dropzone';
 import { storage } from '../services/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getAnalysis } from '../services/openai';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '../services/firebase';
 import { addFileInfo } from '../services/firebase';
+import { User } from '../types';
 
 interface FileInfo {
   name: string;
@@ -26,6 +25,7 @@ interface FileUploadProps {
   onFileUploaded: (fileInfo: FileInfo) => void;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
+  user: User;
 }
 
 const MAX_FILES = 10;
@@ -42,10 +42,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
   onFileUploaded,
   setIsLoading,
   setError,
+  user,
 }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
-  const [user] = useAuthState(auth);
   const [isPickerActive, setIsPickerActive] = useState(false);
 
   const onDrop = useCallback(
@@ -121,9 +121,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
     accept: { 'application/pdf': ['.pdf'] },
     multiple: false,
     useFsAccessApi: false,
+    noClick: true, // 클릭 이벤트를 비활성화합니다
   });
 
-  const handleButtonClick = () => {
+  const handleButtonClick = (event: React.MouseEvent) => {
+    event.stopPropagation(); // 이벤트 버블링을 막습니다
     if (!isPickerActive) {
       setIsPickerActive(true);
       const input = document.createElement('input');

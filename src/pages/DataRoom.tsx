@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -23,14 +23,10 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileUpload from '../components/FileUpload';
-
-interface FileInfo {
-  name: string;
-  url: string;
-  analysis: string | any;
-  uploadDate: string;
-  size: string;
-}
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '../services/firebase';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { FileInfo, User } from '../types';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -67,6 +63,28 @@ const DataRoom: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [user] = useAuthState(auth);
+
+  useEffect(() => {
+    if (user) {
+      const filesRef = collection(db, 'files');
+      const q = query(filesRef, where('userId', '==', user.uid));
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const newFiles: FileInfo[] = [];
+        querySnapshot.forEach((doc) => {
+          newFiles.push({
+            name: doc.data().name,
+            url: doc.data().url,
+            analysis: doc.data().analysis,
+            uploadDate: doc.data().uploadDate,
+            size: doc.data().size,
+          });
+        });
+        setFiles(newFiles);
+      });
+      return unsubscribe;
+    }
+  }, [user, db]);
 
   const handleFileUploaded = (fileInfo: FileInfo) => {
     setFiles((prevFiles) => {
@@ -117,6 +135,7 @@ const DataRoom: React.FC = () => {
           onFileUploaded={handleFileUploaded}
           setIsLoading={setIsLoading}
           setError={setError}
+          user={user as User}
         />
       </StyledPaper>
       {isLoading && <LinearProgress sx={{ mb: 2 }} />}
