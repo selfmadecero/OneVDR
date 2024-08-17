@@ -31,7 +31,8 @@ import {
   deleteDoc,
   doc,
 } from 'firebase/firestore';
-import { db, auth } from '../services/firebase';
+import { db, auth, storage } from '../services/firebase';
+import { ref, deleteObject } from 'firebase/storage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { FileInfo, User } from '../types';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -127,7 +128,13 @@ const DataRoom: React.FC = () => {
   const handleDeleteFile = async (fileId: string) => {
     if (!user) return;
     try {
+      // Firestore에서 문서 삭제
       await deleteDoc(doc(db, 'users', user.uid, 'files', fileId));
+
+      // Storage에서 파일 삭제
+      const storageRef = ref(storage, `users/${user.uid}/pdfs/${fileId}`);
+      await deleteObject(storageRef);
+
       setFiles((prevFiles) => prevFiles.filter((file) => file.id !== fileId));
     } catch (error) {
       console.error('Error deleting file:', error);
