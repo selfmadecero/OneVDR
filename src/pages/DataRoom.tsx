@@ -127,10 +127,6 @@ const DataRoom: React.FC = () => {
         <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
           Upload Documents
         </Typography>
-        <Typography variant="body2" sx={{ mb: 3, color: '#666' }}>
-          As this is an MVP version, you can upload up to 10 PDF files, each
-          with a maximum size of 10MB.
-        </Typography>
         <FileUpload
           onFileUploaded={handleFileUploaded}
           setIsLoading={setIsLoading}

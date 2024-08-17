@@ -183,7 +183,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
         )}
       </Box>
       <Alert severity="info" sx={{ mt: 2 }}>
-        You can upload up to {MAX_FILES} files, each 10MB or less.
+        As an MVP, we currently support PDF uploads only. You can upload up to
+        10 PDF files simultaneously, with each file not exceeding 10MB in size.
       </Alert>
     </Box>
   );
