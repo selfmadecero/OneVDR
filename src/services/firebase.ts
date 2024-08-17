@@ -2,6 +2,8 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { doc, setDoc } from 'firebase/firestore';
+import { FileInfo } from '../types';
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -18,3 +20,12 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+export const addFileInfo = async (userId: string, fileInfo: FileInfo) => {
+  try {
+    await setDoc(doc(db, 'users', userId, 'files', fileInfo.name), fileInfo);
+  } catch (error) {
+    console.error('Error adding file info to Firestore:', error);
+    throw error;
+  }
+};

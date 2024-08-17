@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -18,35 +18,13 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  styled,
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileUpload from '../components/FileUpload';
-import { useCollectionData } from 'react-firebase-hooks/firestore';
-import {
-  collection,
-  query,
-  orderBy,
-  doc,
-  deleteDoc,
-  getDoc,
-} from 'firebase/firestore';
-import { db, auth } from '../services/firebase';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import {
-  DocumentData,
-  QuerySnapshot,
-  FirestoreError,
-} from 'firebase/firestore';
-import {
-  getStorage,
-  ref,
-  deleteObject,
-  getDownloadURL,
-} from 'firebase/storage';
 
-interface FileInfo extends DocumentData {
-  id: string;
+interface FileInfo {
   name: string;
   url: string;
   analysis: string | any;
@@ -54,65 +32,60 @@ interface FileInfo extends DocumentData {
   size: string;
 }
 
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  backdropFilter: 'blur(10px)',
+  borderRadius: theme.spacing(2),
+  padding: theme.spacing(3),
+  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+}));
+
+const StyledTableContainer = styled(TableContainer)<{
+  component?: React.ElementType;
+}>(({ theme }) => ({
+  borderRadius: theme.spacing(2),
+  overflow: 'hidden',
+  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+}));
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  borderBottom: 'none',
+}));
+
+const StyledTableRow = styled(TableRow)(({ theme }) => ({
+  '&:nth-of-type(odd)': {
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+  },
+  '&:hover': {
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+  },
+}));
+
 const DataRoom: React.FC = () => {
-  const [user] = useAuthState(auth);
-  const storage = getStorage();
-  const [filesData, loading, firestoreError] = useCollectionData(
-    user
-      ? query(
-          collection(db, 'users', user.uid, 'files'),
-          orderBy('uploadDate', 'desc')
-        )
-      : null
-  );
-
   const [files, setFiles] = useState<FileInfo[]>([]);
-
-  useEffect(() => {
-    const fetchFiles = async () => {
-      if (filesData && user) {
-        const updatedFiles = await Promise.all(
-          filesData.map(async (file) => {
-            const fileRef = ref(storage, `users/${user.uid}/pdfs/${file.name}`);
-            try {
-              await getDownloadURL(fileRef);
-              return {
-                ...file,
-                id: file.id || file.name,
-              };
-            } catch (error) {
-              console.error(`Error fetching file ${file.name}:`, error);
-              // 파일이 Storage에 존재하지 않으면 Firestore에서도 삭제
-              if (file.id) {
-                try {
-                  await deleteDoc(doc(db, 'users', user.uid, 'files', file.id));
-                  console.log(
-                    `Deleted non-existent file ${file.name} from Firestore`
-                  );
-                } catch (deleteError) {
-                  console.error(
-                    `Error deleting file ${file.name} from Firestore:`,
-                    deleteError
-                  );
-                }
-              }
-              return null;
-            }
-          })
-        );
-        setFiles(
-          updatedFiles.filter((file): file is FileInfo => file !== null)
-        );
-      }
-    };
-
-    fetchFiles();
-  }, [filesData, user, storage, db]);
-
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
+
+  const handleFileUploaded = (fileInfo: FileInfo) => {
+    setFiles((prevFiles) => {
+      const index = prevFiles.findIndex((f) => f.name === fileInfo.name);
+      if (index !== -1) {
+        const newFiles = [...prevFiles];
+        newFiles[index] = fileInfo;
+        return newFiles;
+      }
+      return [...prevFiles, fileInfo];
+    });
+    setError(null);
+  };
+
+  const handleDeleteFile = (index: number) => {
+    const newFiles = [...files];
+    newFiles.splice(index, 1);
+    setFiles(newFiles);
+  };
 
   const handleOpenDialog = (file: FileInfo) => {
     setSelectedFile(file);
@@ -123,130 +96,85 @@ const DataRoom: React.FC = () => {
     setOpenDialog(false);
   };
 
-  const handleDeleteFile = async (id: string, fileName: string) => {
-    if (!user) {
-      setError('User not authenticated. Please log in.');
-      return;
-    }
-    try {
-      setIsLoading(true);
-      if (!id) {
-        throw new Error('Invalid file ID');
-      }
-
-      // Delete document from Firestore first
-      const fileDocRef = doc(db, 'users', user.uid, 'files', id);
-      await deleteDoc(fileDocRef);
-
-      // Verify if the document was actually deleted
-      const docSnap = await getDoc(fileDocRef);
-      if (docSnap.exists()) {
-        throw new Error('Failed to delete document from Firestore');
-      }
-
-      // Then delete file from Firebase Storage
-      const fileRef = ref(storage, `users/${user.uid}/pdfs/${fileName}`);
-      await deleteObject(fileRef);
-
-      // Update local state
-      setFiles((prevFiles) => prevFiles.filter((file) => file.id !== id));
-
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error deleting file:', error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete file. Please try again.'
-      );
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%', p: 3 }}>
       <Typography
         variant="h4"
         component="h1"
-        sx={{ mb: 3, fontWeight: 'bold' }}
+        sx={{ mb: 4, fontWeight: 'bold', color: '#333' }}
       >
         Data Room
       </Typography>
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <StyledPaper elevation={0} sx={{ mb: 4 }}>
+        <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
           Upload Documents
         </Typography>
-        <FileUpload setIsLoading={setIsLoading} setError={setError} />
-      </Paper>
+        <Typography variant="body2" sx={{ mb: 3, color: '#666' }}>
+          As this is an MVP version, you can upload up to 10 PDF files, each
+          with a maximum size of 10MB.
+        </Typography>
+        <FileUpload
+          onFileUploaded={handleFileUploaded}
+          setIsLoading={setIsLoading}
+          setError={setError}
+        />
+      </StyledPaper>
       {isLoading && <LinearProgress sx={{ mb: 2 }} />}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-      <TableContainer component={Paper}>
+      <StyledTableContainer component={Paper}>
         <Table>
           <TableHead>
-            <TableRow key="header">
-              <TableCell>File Name</TableCell>
-              <TableCell>Upload Date</TableCell>
-              <TableCell>Size</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
+            <TableRow>
+              <StyledTableCell>File Name</StyledTableCell>
+              <StyledTableCell>Upload Date</StyledTableCell>
+              <StyledTableCell>Size</StyledTableCell>
+              <StyledTableCell>Status</StyledTableCell>
+              <StyledTableCell>Actions</StyledTableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {files && files.length > 0 ? (
-              files.map((fileInfo) => {
-                return (
-                  <TableRow key={fileInfo.id}>
-                    <TableCell>{fileInfo.name}</TableCell>
-                    <TableCell>{fileInfo.uploadDate}</TableCell>
-                    <TableCell>{fileInfo.size}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={
-                          typeof fileInfo.analysis === 'string'
-                            ? 'Analyzing'
-                            : 'Analyzed'
-                        }
-                        color={
-                          typeof fileInfo.analysis === 'string'
-                            ? 'warning'
-                            : 'success'
-                        }
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleOpenDialog(fileInfo)}
-                      >
-                        <VisibilityIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() =>
-                          handleDeleteFile(fileInfo.id, fileInfo.name)
-                        }
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5} align="center">
-                  파일이 없습니다.
-                </TableCell>
-              </TableRow>
-            )}
+            {files.map((file, index) => (
+              <StyledTableRow key={index}>
+                <StyledTableCell>{file.name}</StyledTableCell>
+                <StyledTableCell>{file.uploadDate}</StyledTableCell>
+                <StyledTableCell>{file.size}</StyledTableCell>
+                <StyledTableCell>
+                  <Chip
+                    label={
+                      typeof file.analysis === 'string'
+                        ? 'Analyzing'
+                        : 'Analyzed'
+                    }
+                    color={
+                      typeof file.analysis === 'string' ? 'warning' : 'success'
+                    }
+                    size="small"
+                    sx={{ borderRadius: '4px' }}
+                  />
+                </StyledTableCell>
+                <StyledTableCell>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleOpenDialog(file)}
+                  >
+                    <VisibilityIcon />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleDeleteFile(index)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </StyledTableCell>
+              </StyledTableRow>
+            ))}
           </TableBody>
         </Table>
-      </TableContainer>
+      </StyledTableContainer>
       <Dialog
         open={openDialog}
         onClose={handleCloseDialog}

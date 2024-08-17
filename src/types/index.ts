@@ -8,4 +8,6 @@ export interface FileInfo {
   name: string;
   url: string;
   analysis: string;
+  uploadDate: string;
+  size: string;
 }
