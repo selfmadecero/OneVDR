@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  styled,
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -30,6 +31,35 @@ interface FileInfo {
   uploadDate: string;
   size: string;
 }
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  backdropFilter: 'blur(10px)',
+  borderRadius: theme.spacing(2),
+  padding: theme.spacing(3),
+  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+}));
+
+const StyledTableContainer = styled(TableContainer)<{
+  component?: React.ElementType;
+}>(({ theme }) => ({
+  borderRadius: theme.spacing(2),
+  overflow: 'hidden',
+  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+}));
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  borderBottom: 'none',
+}));
+
+const StyledTableRow = styled(TableRow)(({ theme }) => ({
+  '&:nth-of-type(odd)': {
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+  },
+  '&:hover': {
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+  },
+}));
 
 const DataRoom: React.FC = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
@@ -67,48 +97,52 @@ const DataRoom: React.FC = () => {
   };
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%', p: 3 }}>
       <Typography
         variant="h4"
         component="h1"
-        sx={{ mb: 3, fontWeight: 'bold' }}
+        sx={{ mb: 4, fontWeight: 'bold', color: '#333' }}
       >
         Data Room
       </Typography>
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <StyledPaper elevation={0} sx={{ mb: 4 }}>
+        <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
           Upload Documents
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 3, color: '#666' }}>
+          As this is an MVP version, you can upload up to 10 PDF files, each
+          with a maximum size of 10MB.
         </Typography>
         <FileUpload
           onFileUploaded={handleFileUploaded}
           setIsLoading={setIsLoading}
           setError={setError}
         />
-      </Paper>
+      </StyledPaper>
       {isLoading && <LinearProgress sx={{ mb: 2 }} />}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-      <TableContainer component={Paper}>
+      <StyledTableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>File Name</TableCell>
-              <TableCell>Upload Date</TableCell>
-              <TableCell>Size</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
+              <StyledTableCell>File Name</StyledTableCell>
+              <StyledTableCell>Upload Date</StyledTableCell>
+              <StyledTableCell>Size</StyledTableCell>
+              <StyledTableCell>Status</StyledTableCell>
+              <StyledTableCell>Actions</StyledTableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {files.map((file, index) => (
-              <TableRow key={index}>
-                <TableCell>{file.name}</TableCell>
-                <TableCell>{file.uploadDate}</TableCell>
-                <TableCell>{file.size}</TableCell>
-                <TableCell>
+              <StyledTableRow key={index}>
+                <StyledTableCell>{file.name}</StyledTableCell>
+                <StyledTableCell>{file.uploadDate}</StyledTableCell>
+                <StyledTableCell>{file.size}</StyledTableCell>
+                <StyledTableCell>
                   <Chip
                     label={
                       typeof file.analysis === 'string'
@@ -119,9 +153,10 @@ const DataRoom: React.FC = () => {
                       typeof file.analysis === 'string' ? 'warning' : 'success'
                     }
                     size="small"
+                    sx={{ borderRadius: '4px' }}
                   />
-                </TableCell>
-                <TableCell>
+                </StyledTableCell>
+                <StyledTableCell>
                   <IconButton
                     size="small"
                     onClick={() => handleOpenDialog(file)}
@@ -134,12 +169,12 @@ const DataRoom: React.FC = () => {
                   >
                     <DeleteIcon />
                   </IconButton>
-                </TableCell>
-              </TableRow>
+                </StyledTableCell>
+              </StyledTableRow>
             ))}
           </TableBody>
         </Table>
-      </TableContainer>
+      </StyledTableContainer>
       <Dialog
         open={openDialog}
         onClose={handleCloseDialog}

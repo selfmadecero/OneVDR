@@ -12,6 +12,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getAnalysis } from '../services/openai';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../services/firebase';
+import { addFileInfo } from '../services/firebase';
 
 interface FileInfo {
   name: string;
@@ -27,7 +28,7 @@ interface FileUploadProps {
   setError: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-const MAX_FILES = 5;
+const MAX_FILES = 10;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const formatFileSize = (bytes: number): string => {
@@ -45,6 +46,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
   const [user] = useAuthState(auth);
+  const [isPickerActive, setIsPickerActive] = useState(false);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -63,7 +65,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       }
 
       if (uploadedCount + validFiles.length > MAX_FILES) {
-        setError(`You can only upload up to ${MAX_FILES} files at a time.`);
+        setError(`You can only upload up to ${MAX_FILES} files in total.`);
         return;
       }
 
@@ -87,6 +89,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             size: formatFileSize(file.size),
           };
 
+          await addFileInfo(user.uid, fileInfo);
           onFileUploaded(fileInfo);
           setUploadedCount((prev) => prev + 1);
 
@@ -95,14 +98,14 @@ const FileUpload: React.FC<FileUploadProps> = ({
             const analysis = await getAnalysis(
               `users/${user.uid}/pdfs/${file.name}`
             );
-            onFileUploaded({ ...fileInfo, analysis });
+            const updatedFileInfo = { ...fileInfo, analysis };
+            await addFileInfo(user.uid, updatedFileInfo);
+            onFileUploaded(updatedFileInfo);
           }, 30000);
         }
       } catch (error) {
-        console.error('Error uploading file:', error);
-        setError(
-          error instanceof Error ? error.message : 'Error uploading file'
-        );
+        console.error('Error adding file info to Firestore:', error);
+        setError('Error uploading file info. Please try again.');
         // 추가: 업로드 실패 시 uploadedCount를 감소시킵니다.
         setUploadedCount((prev) => Math.max(0, prev - 1));
       } finally {
@@ -117,7 +120,25 @@ const FileUpload: React.FC<FileUploadProps> = ({
     onDrop,
     accept: { 'application/pdf': ['.pdf'] },
     multiple: false,
+    useFsAccessApi: false,
   });
+
+  const handleButtonClick = () => {
+    if (!isPickerActive) {
+      setIsPickerActive(true);
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf';
+      input.onchange = (e) => {
+        const files = (e.target as HTMLInputElement).files;
+        if (files) {
+          onDrop(Array.from(files));
+        }
+        setIsPickerActive(false);
+      };
+      input.click();
+    }
+  };
 
   if (!user) {
     return <Typography>Please sign in to upload files.</Typography>;
@@ -142,11 +163,19 @@ const FileUpload: React.FC<FileUploadProps> = ({
         {uploading ? (
           <CircularProgress />
         ) : isDragActive ? (
-          <Typography>Drop the PDF file here...</Typography>
+          <Typography>Drop the file here</Typography>
         ) : (
-          <Typography>
-            Drag and drop a PDF file here, or click to select a file
-          </Typography>
+          <>
+            <Typography>Drag and drop a PDF file here</Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleButtonClick}
+              sx={{ mt: 2 }}
+            >
+              Select File
+            </Button>
+          </>
         )}
       </Box>
       <Alert severity="info" sx={{ mt: 2 }}>
