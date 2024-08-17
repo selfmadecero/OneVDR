@@ -13,9 +13,7 @@ import {
   Alert,
   IconButton,
   Chip,
-  Button,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileUpload from '../components/FileUpload';
@@ -32,12 +30,10 @@ const DataRoom: React.FC = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const handleFileUploaded = (fileInfo: FileInfo) => {
-    setFiles([...files, fileInfo]);
+    setFiles((prevFiles) => [...prevFiles, fileInfo]);
     setError(null);
-    setIsUploadModalOpen(false);
   };
 
   const handleDeleteFile = (index: number) => {
@@ -55,14 +51,16 @@ const DataRoom: React.FC = () => {
       >
         Data Room
       </Typography>
-      <Button
-        variant="contained"
-        startIcon={<AddIcon />}
-        onClick={() => setIsUploadModalOpen(true)}
-        sx={{ mb: 3 }}
-      >
-        Upload Document
-      </Button>
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Upload Documents
+        </Typography>
+        <FileUpload
+          onFileUploaded={handleFileUploaded}
+          setIsLoading={setIsLoading}
+          setError={setError}
+        />
+      </Paper>
       {isLoading && <LinearProgress sx={{ mb: 2 }} />}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -108,14 +106,6 @@ const DataRoom: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
-      {isUploadModalOpen && (
-        <FileUpload
-          onFileUploaded={handleFileUploaded}
-          setIsLoading={setIsLoading}
-          setError={setError}
-          onClose={() => setIsUploadModalOpen(false)}
-        />
-      )}
     </Box>
   );
 };
