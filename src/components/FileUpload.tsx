@@ -11,15 +11,7 @@ import { storage } from '../services/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getAnalysis } from '../services/openai';
 import { addFileInfo } from '../services/firebase';
-import { User } from '../types';
-
-interface FileInfo {
-  name: string;
-  url: string;
-  analysis: string;
-  uploadDate: string;
-  size: string;
-}
+import { FileInfo, User } from '../types';
 
 interface FileUploadProps {
   onFileUploaded: (fileInfo: FileInfo) => void;
@@ -82,6 +74,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           const url = await getDownloadURL(storageRef);
 
           const fileInfo: FileInfo = {
+            id: Date.now().toString(), // 임시 ID 생성
             name: file.name,
             url,
             analysis: 'Analysis in progress...',
@@ -176,6 +169,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               color="primary"
               onClick={handleButtonClick}
               sx={{ mt: 2 }}
+              aria-label="파일 선택"
             >
               Select Files
             </Button>

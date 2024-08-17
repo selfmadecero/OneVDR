@@ -5,6 +5,7 @@ export interface User {
 }
 
 export interface FileInfo {
+  id: string;
   name: string;
   url: string;
   analysis: string | any;

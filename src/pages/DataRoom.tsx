@@ -23,7 +23,13 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileUpload from '../components/FileUpload';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  onSnapshot,
+  deleteDoc,
+  doc,
+} from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { FileInfo, User } from '../types';
@@ -67,24 +73,19 @@ const DataRoom: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      const filesRef = collection(db, 'files');
-      const q = query(filesRef, where('userId', '==', user.uid));
+      const filesRef = collection(db, 'users', user.uid, 'files');
+      const q = query(filesRef);
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const newFiles: FileInfo[] = [];
         querySnapshot.forEach((doc) => {
-          newFiles.push({
-            name: doc.data().name,
-            url: doc.data().url,
-            analysis: doc.data().analysis,
-            uploadDate: doc.data().uploadDate,
-            size: doc.data().size,
-          });
+          const data = doc.data() as Omit<FileInfo, 'id'>;
+          newFiles.push({ ...data, id: doc.id } as FileInfo);
         });
         setFiles(newFiles);
       });
       return unsubscribe;
     }
-  }, [user, db]);
+  }, [user]);
 
   const handleFileUploaded = (fileInfo: FileInfo) => {
     setFiles((prevFiles) => {
@@ -99,10 +100,15 @@ const DataRoom: React.FC = () => {
     setError(null);
   };
 
-  const handleDeleteFile = (index: number) => {
-    const newFiles = [...files];
-    newFiles.splice(index, 1);
-    setFiles(newFiles);
+  const handleDeleteFile = async (fileId: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'files', fileId));
+      setFiles((prevFiles) => prevFiles.filter((file) => file.id !== fileId));
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      setError('Failed to delete file. Please try again.');
+    }
   };
 
   const handleOpenDialog = (file: FileInfo) => {
@@ -152,8 +158,8 @@ const DataRoom: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {files.map((file, index) => (
-              <StyledTableRow key={index}>
+            {files.map((file) => (
+              <StyledTableRow key={file.id}>
                 <StyledTableCell>{file.name}</StyledTableCell>
                 <StyledTableCell>{file.uploadDate}</StyledTableCell>
                 <StyledTableCell>{file.size}</StyledTableCell>
@@ -180,7 +186,7 @@ const DataRoom: React.FC = () => {
                   </IconButton>
                   <IconButton
                     size="small"
-                    onClick={() => handleDeleteFile(index)}
+                    onClick={() => handleDeleteFile(file.id)}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -212,7 +218,42 @@ const DataRoom: React.FC = () => {
                   )
                 )}
               </ul>
-              {/* Add more sections for other analysis properties */}
+              <Typography variant="h6">Categories</Typography>
+              <ul>
+                {selectedFile.analysis.categories.map(
+                  (category: string, index: number) => (
+                    <li key={index}>{category}</li>
+                  )
+                )}
+              </ul>
+              <Typography variant="h6">Tags</Typography>
+              <ul>
+                {selectedFile.analysis.tags.map(
+                  (tag: string, index: number) => (
+                    <li key={index}>{tag}</li>
+                  )
+                )}
+              </ul>
+              <Typography variant="h6">Key Insights</Typography>
+              <ul>
+                {selectedFile.analysis.keyInsights.map(
+                  (insight: string, index: number) => (
+                    <li key={index}>{insight}</li>
+                  )
+                )}
+              </ul>
+              <Typography variant="h6">Tone and Style</Typography>
+              <Typography>{selectedFile.analysis.toneAndStyle}</Typography>
+              <Typography variant="h6">Target Audience</Typography>
+              <Typography>{selectedFile.analysis.targetAudience}</Typography>
+              <Typography variant="h6">Potential Applications</Typography>
+              <ul>
+                {selectedFile.analysis.potentialApplications.map(
+                  (application: string, index: number) => (
+                    <li key={index}>{application}</li>
+                  )
+                )}
+              </ul>
             </Box>
           ) : (
             <Typography>{selectedFile?.analysis}</Typography>

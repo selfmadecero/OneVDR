@@ -17,6 +17,4 @@ export interface FileInfo {
   uploadDate: string;
   size: string;
   uploadProgress?: number;
-  analysisProgress?: number;
-  deleted?: boolean;
 }
