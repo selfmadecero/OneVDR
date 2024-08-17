@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   BrowserRouter as Router,
   Route,
   Routes,
   useLocation,
+  useNavigate,
 } from 'react-router-dom';
 import { ThemeProvider, createTheme, Theme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -13,6 +14,8 @@ import DataRoom from './pages/DataRoom';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import { Box } from '@mui/material';
+import { getAuth, getRedirectResult } from 'firebase/auth';
+import NotFound from './components/NotFound';
 
 const theme = createTheme({
   palette: {
@@ -27,7 +30,21 @@ const theme = createTheme({
 
 const AppContent: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const hideSidebar = ['/', '/auth'].includes(location.pathname);
+
+  useEffect(() => {
+    const auth = getAuth();
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          navigate('/dataroom');
+        }
+      })
+      .catch((error) => {
+        console.error('Error after redirect:', error);
+      });
+  }, [navigate]);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -48,6 +65,7 @@ const AppContent: React.FC = () => {
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/dataroom" element={<DataRoom />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Box>
     </Box>

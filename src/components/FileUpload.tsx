@@ -1,50 +1,37 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import { useDropzone } from 'react-dropzone';
 import {
   Button,
-  CircularProgress,
-  Box,
   Typography,
-  Alert,
+  Box,
+  LinearProgress,
+  IconButton,
 } from '@mui/material';
-import { useDropzone } from 'react-dropzone';
-import { storage } from '../services/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getAnalysis } from '../services/openai';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { storage, db, auth } from '../services/firebase';
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from 'firebase/storage';
+import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '../services/firebase';
 
-interface FileInfo {
-  name: string;
-  url: string;
-  analysis: string;
-  uploadDate: string;
-  size: string;
-}
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILES = 5;
 
 interface FileUploadProps {
-  onFileUploaded: (fileInfo: FileInfo) => void;
-  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  setError: React.Dispatch<React.SetStateAction<string | null>>;
+  setIsLoading: (isLoading: boolean) => void;
+  setError: (error: string | null) => void;
 }
 
-const MAX_FILES = 5;
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-const formatFileSize = (bytes: number): string => {
-  if (bytes < 1024) return bytes + ' bytes';
-  else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-  else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
-  else return (bytes / 1073741824).toFixed(1) + ' GB';
-};
-
-const FileUpload: React.FC<FileUploadProps> = ({
-  onFileUploaded,
-  setIsLoading,
-  setError,
-}) => {
-  const [uploading, setUploading] = useState(false);
-  const [uploadedCount, setUploadedCount] = useState(0);
+const FileUpload: React.FC<FileUploadProps> = ({ setIsLoading, setError }) => {
   const [user] = useAuthState(auth);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -62,66 +49,103 @@ const FileUpload: React.FC<FileUploadProps> = ({
         return;
       }
 
-      if (uploadedCount + validFiles.length > MAX_FILES) {
+      if (validFiles.length > MAX_FILES) {
         setError(`You can only upload up to ${MAX_FILES} files at a time.`);
         return;
       }
 
       setUploading(true);
       setIsLoading(true);
+      setError(null);
 
       try {
-        for (const file of validFiles) {
+        for (let i = 0; i < validFiles.length; i++) {
+          const file = validFiles[i];
           const storageRef = ref(
             storage,
             `users/${user.uid}/pdfs/${file.name}`
           );
+
+          // Upload file to Firebase Storage
           await uploadBytes(storageRef, file);
           const url = await getDownloadURL(storageRef);
 
-          const fileInfo: FileInfo = {
+          const fileInfo = {
             name: file.name,
             url,
-            analysis: 'Analysis in progress...',
-            uploadDate: new Date().toLocaleString(),
-            size: formatFileSize(file.size),
+            analysis: 'Analyzing...',
+            uploadDate: new Date().toISOString(),
+            size: file.size,
           };
 
-          onFileUploaded(fileInfo);
-          setUploadedCount((prev) => prev + 1);
+          // Add document to Firestore
+          const docRef = await addDoc(
+            collection(db, 'users', user.uid, 'files'),
+            fileInfo
+          );
 
-          // Wait for 30 seconds before fetching the analysis
-          setTimeout(async () => {
-            const analysis = await getAnalysis(
-              `users/${user.uid}/pdfs/${file.name}`
-            );
-            onFileUploaded({ ...fileInfo, analysis });
-          }, 30000);
+          setUploadProgress(((i + 1) / validFiles.length) * 100);
         }
       } catch (error) {
         console.error('Error uploading file:', error);
         setError(
           error instanceof Error ? error.message : 'Error uploading file'
         );
-        // 추가: 업로드 실패 시 uploadedCount를 감소시킵니다.
-        setUploadedCount((prev) => Math.max(0, prev - 1));
       } finally {
         setUploading(false);
         setIsLoading(false);
+        setUploadProgress(0);
       }
     },
-    [onFileUploaded, setIsLoading, setError, uploadedCount, user]
+    [user, setIsLoading, setError]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'application/pdf': ['.pdf'] },
-    multiple: false,
+    multiple: true,
+    maxFiles: MAX_FILES,
+    noClick: true, // 클릭 이벤트를 비활성화합니다.
   });
 
-  if (!user) {
-    return <Typography>Please sign in to upload files.</Typography>;
-  }
+  const handleClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleDelete = useCallback(
+    async (fileId: string, fileName: string) => {
+      if (!user) {
+        setError('Please sign in to delete files.');
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+
+        // Firebase Storage에서 파일 삭제
+        const fileRef = ref(storage, `users/${user.uid}/pdfs/${fileName}`);
+        await deleteObject(fileRef);
+
+        // Firestore에서 문서 삭제
+        await deleteDoc(doc(db, 'users', user.uid, 'files', fileId));
+
+        // 상태 업데이트 (파일 목록에서 삭제된 파일 제거)
+        // 이 부분은 상위 컴포넌트에서 처리해야 할 수 있습니다.
+        // setFiles(prevFiles => prevFiles.filter(file => file.id !== fileId));
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error deleting file:', error);
+        setError(
+          error instanceof Error ? error.message : 'Error deleting file'
+        );
+        setIsLoading(false);
+      }
+    },
+    [user, setIsLoading, setError]
+  );
 
   return (
     <Box>
@@ -130,7 +154,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         sx={{
           border: '2px dashed #cccccc',
           borderRadius: 2,
-          p: 3,
+          p: 2,
           textAlign: 'center',
           cursor: 'pointer',
           '&:hover': {
@@ -138,20 +162,28 @@ const FileUpload: React.FC<FileUploadProps> = ({
           },
         }}
       >
-        <input {...getInputProps()} />
-        {uploading ? (
-          <CircularProgress />
-        ) : isDragActive ? (
-          <Typography>Drop the PDF file here...</Typography>
-        ) : (
-          <Typography>
-            Drag and drop a PDF file here, or click to select a file
-          </Typography>
-        )}
+        <input {...getInputProps()} ref={fileInputRef} />
+        <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+        <Typography variant="h6" gutterBottom>
+          {isDragActive ? 'Drop the files here...' : 'Drag and drop files here'}
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleClick}
+          sx={{ mt: 2 }}
+        >
+          Select Files
+        </Button>
+        <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+          (Only PDF files are accepted, max 5 files, 10MB each)
+        </Typography>
       </Box>
-      <Alert severity="info" sx={{ mt: 2 }}>
-        You can upload up to {MAX_FILES} files, each 10MB or less.
-      </Alert>
+      {uploading && (
+        <Box sx={{ width: '100%', mt: 2 }}>
+          <LinearProgress variant="determinate" value={uploadProgress} />
+        </Box>
+      )}
     </Box>
   );
 };

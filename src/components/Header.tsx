@@ -17,6 +17,14 @@ const Header: React.FC = () => {
     }
   };
 
+  const handleLogoClick = () => {
+    if (user) {
+      navigate('/dataroom');
+    } else {
+      navigate('/');
+    }
+  };
+
   return (
     <AppBar
       position="fixed"
@@ -40,7 +48,7 @@ const Header: React.FC = () => {
               color: '#2196f3',
             },
           }}
-          onClick={() => navigate('/')}
+          onClick={handleLogoClick}
         >
           OneVDR
         </Typography>

@@ -131,17 +131,22 @@ export const analyzePDF = functions.storage
 
       const analysis = JSON.parse(response.data.choices[0].message.content);
 
-      // Store the analysis in Firestore
-      await admin
+      // Find the corresponding document in Firestore and update it
+      const userFiles = await admin
         .firestore()
         .collection('users')
         .doc(userId)
-        .collection('analyses')
-        .doc(filePath)
-        .set({
+        .collection('files')
+        .where('name', '==', object.name)
+        .get();
+
+      if (!userFiles.empty) {
+        const fileDoc = userFiles.docs[0];
+        await fileDoc.ref.update({
           analysis,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          analysisTimestamp: admin.firestore.FieldValue.serverTimestamp(),
         });
+      }
 
       return null;
     } catch (error) {
