@@ -1,19 +1,59 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * import {onCall} from "firebase-functions/v2/https";
- * import {onDocumentWritten} from "firebase-functions/v2/firestore";
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
+import axios from 'axios';
 
-import {onRequest} from "firebase-functions/v2/https";
-import * as logger from "firebase-functions/logger";
+admin.initializeApp();
 
-// Start writing functions
-// https://firebase.google.com/docs/functions/typescript
+const API_KEY = functions.config().openai.apikey;
+const API_URL = 'https://api.openai.com/v1/engines/davinci-codex/completions';
 
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+export const analyzePDF = functions.storage
+  .object()
+  .onFinalize(async (object) => {
+    if (!object.name) {
+      console.error('File path is undefined');
+      return null;
+    }
+
+    const filePath = object.name;
+    const bucket = admin.storage().bucket(object.bucket);
+    const file = bucket.file(filePath);
+
+    // Get the download URL
+    const [url] = await file.getSignedUrl({
+      action: 'read',
+      expires: '03-01-2500',
+    });
+
+    try {
+      const response = await axios.post(
+        API_URL,
+        {
+          prompt: `Analyze the PDF at ${url}:\n\nAnalysis:`,
+          max_tokens: 200,
+          n: 1,
+          stop: null,
+          temperature: 0.5,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${API_KEY}`,
+          },
+        }
+      );
+
+      const analysis = response.data.choices[0].text.trim();
+
+      // Store the analysis in Firestore
+      await admin.firestore().collection('analyses').doc(filePath).set({
+        analysis,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return null;
+    } catch (error) {
+      console.error('Error analyzing PDF:', error);
+      throw new functions.https.HttpsError('internal', 'Error analyzing PDF');
+    }
+  });

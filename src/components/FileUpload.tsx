@@ -10,6 +10,8 @@ import { useDropzone } from 'react-dropzone';
 import { storage } from '../services/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { analyzePDF } from '../services/openai';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../services/firebase';
 
 interface FileInfo {
   name: string;
@@ -35,9 +37,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
+  const [user] = useAuthState(auth);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
+      if (!user) {
+        setError('Please sign in to upload files.');
+        return;
+      }
+
       const validFiles = acceptedFiles.filter(
         (file) => file.size <= MAX_FILE_SIZE
       );
@@ -61,7 +69,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
           await uploadBytes(storageRef, file);
           const url = await getDownloadURL(storageRef);
 
-          const analysis = await analyzePDF(url);
+          // Wait for a short time to allow the Firebase Function to process the file
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+
+          const analysis = await analyzePDF(`pdfs/${file.name}`);
 
           const fileInfo: FileInfo = {
             name: file.name,
@@ -76,13 +87,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
         }
       } catch (error) {
         console.error('Error uploading file:', error);
-        setError('Error uploading file');
+        setError(
+          error instanceof Error ? error.message : 'Error uploading file'
+        );
       } finally {
         setUploading(false);
         setIsLoading(false);
       }
     },
-    [onFileUploaded, setIsLoading, setError, uploadedCount]
+    [onFileUploaded, setIsLoading, setError, uploadedCount, user]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -92,6 +105,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
     maxFiles: MAX_FILES,
     maxSize: MAX_FILE_SIZE,
   });
+
+  if (!user) {
+    return <Typography>Please sign in to upload files.</Typography>;
+  }
 
   return (
     <Box>
