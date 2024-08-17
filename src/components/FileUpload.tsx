@@ -127,13 +127,26 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 const updatedFileInfo = {
                   ...fileInfo,
                   analysis,
-                  uploadProgress: 100, // 분석 완료 시 100%로 설정
+                  uploadProgress: 100,
                 };
+                await addFileInfo(user.uid, updatedFileInfo);
                 onFileUploaded(updatedFileInfo);
               } catch (error) {
                 console.error('Error analyzing file:', error);
-                setError('Failed to analyze file. Please try again.');
-                onFileUploaded({ ...fileInfo, uploadProgress: 90 }); // 분석 실패 시 90%로 유지
+                let errorMessage = 'An unknown error occurred';
+                if (error instanceof Error) {
+                  errorMessage = error.message;
+                }
+                setError(errorMessage);
+                const failedFileInfo = {
+                  ...fileInfo,
+                  analysis: 'Analysis failed',
+                  uploadProgress: 100,
+                };
+                await addFileInfo(user.uid, failedFileInfo);
+                onFileUploaded(failedFileInfo);
+              } finally {
+                setIsLoading(false);
               }
             }
           );

@@ -1,28 +1,31 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# 파일 무시에 대한 자세한 내용은 https://help.github.com/articles/ignoring-files/ 를 참조하세요.
 
-# dependencies
+# 의존성
 /node_modules
 /.pnp
 .pnp.js
 
-# testing
+# 테스팅
 /coverage
 
-# production
+# 프로덕션
 /build
 
-# misc
+# 기타
 .DS_Store
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
+# 로그
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-node_modules
 
+# 환경 변수
 .env
+
+# Firebase
 .firebase
 firebase-debug.log

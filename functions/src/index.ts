@@ -5,8 +5,79 @@ import { PDFExtract } from 'pdf.js-extract';
 
 admin.initializeApp();
 
-const API_KEY = process.env.OPENAI_API_KEY;
+const API_KEY = functions.config().openai.api_key;
 const API_URL = 'https://api.openai.com/v1/chat/completions';
+
+async function extractTextFromPDF(file: any): Promise<string> {
+  const [fileContents] = await file.download();
+  const pdfExtract = new PDFExtract();
+  const data = await pdfExtract.extractBuffer(fileContents);
+  return data.pages.map((page) => page.content).join(' ');
+}
+
+async function analyzeTextWithOpenAI(
+  text: string,
+  fileName: string
+): Promise<string> {
+  const maxRetries = 3;
+  let retries = 0;
+
+  while (retries < maxRetries) {
+    try {
+      const response = await axios.post(
+        API_URL,
+        {
+          model: 'gpt-4',
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are an expert document analyst with deep knowledge across various domains. Your task is to analyze the given document comprehensively and accurately.',
+            },
+            {
+              role: 'user',
+              content: `Analyze the following document titled "${fileName}" and provide a detailed analysis:\n\n${text}`,
+            },
+          ],
+          response_format: { type: 'json_object' },
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${API_KEY}`,
+          },
+        }
+      );
+      return response.data.choices[0].message.content;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 429) {
+          retries++;
+          if (retries < maxRetries) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, 1000 * retries * 2)
+            );
+            continue;
+          }
+        } else {
+          console.error('OpenAI API error:', error.response?.data);
+          throw new functions.https.HttpsError(
+            'internal',
+            `OpenAI API error: ${error.response?.status}`
+          );
+        }
+      }
+      throw new functions.https.HttpsError(
+        'internal',
+        'Unknown error occurred'
+      );
+    }
+  }
+  throw new functions.https.HttpsError(
+    'resource-exhausted',
+    'Max retries reached'
+  );
+}
 
 export const analyzePDF = functions.storage
   .object()
@@ -21,66 +92,10 @@ export const analyzePDF = functions.storage
     const bucket = admin.storage().bucket(object.bucket);
     const file = bucket.file(filePath);
 
-    // Get the download URL
-    const [url] = await file.getSignedUrl({
-      action: 'read',
-      expires: '03-01-2500',
-    });
-
     try {
-      // Extract text from PDF
-      console.log('Starting PDF text extraction...');
-      const pdfExtract = new PDFExtract();
-      const data = await pdfExtract.extract(url);
-      console.log(
-        'PDF extraction completed. Number of pages:',
-        data.pages.length
-      );
-      const text = data.pages.map((page) => page.content).join(' ');
-      console.log(
-        'Extracted text from PDF (first 500 characters):',
-        text.substring(0, 500) + '...'
-      );
+      const text = await extractTextFromPDF(file);
+      const analysis = await analyzeTextWithOpenAI(text, object.name);
 
-      // Call OpenAI API
-      console.log('Preparing OpenAI API call...');
-      const response = await axios.post(
-        API_URL,
-        {
-          model: 'gpt-4o-2024-08-06',
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are an expert document analyst with deep knowledge across various domains. Your task is to analyze the given document comprehensively and accurately.',
-            },
-            {
-              role: 'user',
-              content: `Analyze the following document titled "${object.name}" and provide a detailed analysis:\n\n${text}`,
-            },
-          ],
-          response_format: {
-            type: 'json_object',
-          },
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${API_KEY}`,
-          },
-        }
-      );
-      console.log('OpenAI API response received');
-
-      console.log(
-        'Raw OpenAI API response:',
-        JSON.stringify(response.data, null, 2)
-      );
-      const analysis = response.data.choices[0].message.content;
-      console.log('Parsed OpenAI API response:', analysis);
-
-      // Find the corresponding document in Firestore and update it
-      console.log('Updating Firestore document...');
       const userFiles = await admin
         .firestore()
         .collection('users')
@@ -95,17 +110,65 @@ export const analyzePDF = functions.storage
           analysis,
           analysisTimestamp: admin.firestore.FieldValue.serverTimestamp(),
         });
-        console.log('Firestore document updated successfully');
-      } else {
-        console.log('No matching Firestore document found for update');
       }
 
       return null;
     } catch (error) {
       console.error('Error analyzing PDF:', error);
-      if (axios.isAxiosError(error) && error.response) {
-        console.error('OpenAI API error response:', error.response.data);
-      }
       throw new functions.https.HttpsError('internal', 'Error analyzing PDF');
     }
   });
+
+export const analyzeDocument = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'User must be authenticated'
+    );
+  }
+
+  const { filePath } = data;
+  const userId = context.auth.uid;
+  const bucket = admin.storage().bucket();
+  const file = bucket.file(filePath);
+
+  try {
+    const text = await extractTextFromPDF(file);
+    const analysis = await analyzeTextWithOpenAI(
+      text,
+      filePath.split('/').pop() || 'Unknown'
+    );
+
+    const analysisPath = filePath.split('/').pop();
+    if (!analysisPath) throw new Error('Invalid file path');
+
+    await admin
+      .firestore()
+      .collection('users')
+      .doc(userId)
+      .collection('files')
+      .doc(analysisPath)
+      .set(
+        {
+          analysis,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+    return analysis;
+  } catch (error) {
+    console.error('Error analyzing document:', error);
+    if (error instanceof Error) {
+      throw new functions.https.HttpsError(
+        'internal',
+        `Error analyzing document: ${error.message}`
+      );
+    } else {
+      throw new functions.https.HttpsError(
+        'internal',
+        'Unknown error occurred while analyzing document'
+      );
+    }
+  }
+});

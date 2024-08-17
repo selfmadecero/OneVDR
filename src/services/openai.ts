@@ -1,32 +1,29 @@
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
-import { auth } from './firebase';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from './firebase';
 
 export const getAnalysis = async (
   filePath: string,
-  updateProgress: (progress: number) => void
-): Promise<any> => {
+  updateProgress?: (progress: number) => void
+): Promise<string> => {
+  const analyzeDocument = httpsCallable(functions, 'analyzeDocument');
+
   try {
-    const user = auth.currentUser;
-    if (!user) throw new Error('User not authenticated');
-    const db = getFirestore();
-    const analysisPath = filePath.split('/').pop(); // Get only the file name
-    if (!analysisPath) throw new Error('Invalid file path');
-    const docRef = doc(db, 'users', user.uid, 'analyses', analysisPath);
-
-    // Simulate analysis progress
-    for (let i = 20; i <= 90; i += 10) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      updateProgress(i);
-    }
-
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return docSnap.data().analysis;
-    } else {
-      return 'Analysis not available yet. Please try again later.';
-    }
-  } catch (error) {
+    const result = await analyzeDocument({ filePath });
+    return result.data as string;
+  } catch (error: any) {
     console.error('Error fetching analysis:', error);
-    return 'Error fetching analysis. Please try again later.';
+    if (error.code === 'functions/resource-exhausted') {
+      throw new Error('The service is currently busy. Please try again later.');
+    } else if (error.code === 'functions/internal') {
+      throw new Error('An internal error occurred. Please try again later.');
+    } else if (error.details?.includes('OpenAI API error')) {
+      throw new Error(
+        'An error occurred with the analysis service. Please try again later.'
+      );
+    } else {
+      throw new Error(
+        `Error analyzing document: ${error.message || 'Unknown error'}`
+      );
+    }
   }
 };
