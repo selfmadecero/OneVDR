@@ -13,6 +13,11 @@ import {
   Alert,
   IconButton,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -21,7 +26,7 @@ import FileUpload from '../components/FileUpload';
 interface FileInfo {
   name: string;
   url: string;
-  analysis: string;
+  analysis: string | any;
   uploadDate: string;
   size: string;
 }
@@ -30,9 +35,19 @@ const DataRoom: React.FC = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
+  const [openDialog, setOpenDialog] = useState(false);
 
   const handleFileUploaded = (fileInfo: FileInfo) => {
-    setFiles((prevFiles) => [...prevFiles, fileInfo]);
+    setFiles((prevFiles) => {
+      const index = prevFiles.findIndex((f) => f.name === fileInfo.name);
+      if (index !== -1) {
+        const newFiles = [...prevFiles];
+        newFiles[index] = fileInfo;
+        return newFiles;
+      }
+      return [...prevFiles, fileInfo];
+    });
     setError(null);
   };
 
@@ -40,6 +55,15 @@ const DataRoom: React.FC = () => {
     const newFiles = [...files];
     newFiles.splice(index, 1);
     setFiles(newFiles);
+  };
+
+  const handleOpenDialog = (file: FileInfo) => {
+    setSelectedFile(file);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
   };
 
   return (
@@ -85,12 +109,22 @@ const DataRoom: React.FC = () => {
                 <TableCell>{file.uploadDate}</TableCell>
                 <TableCell>{file.size}</TableCell>
                 <TableCell>
-                  <Chip label="Analyzed" color="success" size="small" />
+                  <Chip
+                    label={
+                      typeof file.analysis === 'string'
+                        ? 'Analyzing'
+                        : 'Analyzed'
+                    }
+                    color={
+                      typeof file.analysis === 'string' ? 'warning' : 'success'
+                    }
+                    size="small"
+                  />
                 </TableCell>
                 <TableCell>
                   <IconButton
                     size="small"
-                    onClick={() => window.open(file.url)}
+                    onClick={() => handleOpenDialog(file)}
                   >
                     <VisibilityIcon />
                   </IconButton>
@@ -106,6 +140,38 @@ const DataRoom: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>{selectedFile?.name}</DialogTitle>
+        <DialogContent>
+          {selectedFile && typeof selectedFile.analysis === 'object' ? (
+            <Box>
+              <Typography variant="h6">Summary</Typography>
+              <Typography>{selectedFile.analysis.summary}</Typography>
+              <Typography variant="h6">Keywords</Typography>
+              <ul>
+                {selectedFile.analysis.keywords.map(
+                  (keyword: any, index: number) => (
+                    <li key={index}>
+                      <strong>{keyword.word}</strong>: {keyword.explanation}
+                    </li>
+                  )
+                )}
+              </ul>
+              {/* Add more sections for other analysis properties */}
+            </Box>
+          ) : (
+            <Typography>{selectedFile?.analysis}</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

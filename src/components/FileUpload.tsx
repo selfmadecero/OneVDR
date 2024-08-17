@@ -9,7 +9,7 @@ import {
 import { useDropzone } from 'react-dropzone';
 import { storage } from '../services/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { analyzePDF } from '../services/openai';
+import { getAnalysis } from '../services/openai';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../services/firebase';
 
@@ -29,6 +29,13 @@ interface FileUploadProps {
 
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return bytes + ' bytes';
+  else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+  else return (bytes / 1073741824).toFixed(1) + ' GB';
+};
 
 const FileUpload: React.FC<FileUploadProps> = ({
   onFileUploaded,
@@ -65,31 +72,39 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       try {
         for (const file of validFiles) {
-          const storageRef = ref(storage, `pdfs/${file.name}`);
+          const storageRef = ref(
+            storage,
+            `users/${user.uid}/pdfs/${file.name}`
+          );
           await uploadBytes(storageRef, file);
           const url = await getDownloadURL(storageRef);
-
-          // Wait for a short time to allow the Firebase Function to process the file
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-
-          const analysis = await analyzePDF(`pdfs/${file.name}`);
 
           const fileInfo: FileInfo = {
             name: file.name,
             url,
-            analysis,
-            uploadDate: new Date().toISOString(),
-            size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+            analysis: 'Analysis in progress...',
+            uploadDate: new Date().toLocaleString(),
+            size: formatFileSize(file.size),
           };
 
           onFileUploaded(fileInfo);
           setUploadedCount((prev) => prev + 1);
+
+          // Wait for 30 seconds before fetching the analysis
+          setTimeout(async () => {
+            const analysis = await getAnalysis(
+              `users/${user.uid}/pdfs/${file.name}`
+            );
+            onFileUploaded({ ...fileInfo, analysis });
+          }, 30000);
         }
       } catch (error) {
         console.error('Error uploading file:', error);
         setError(
           error instanceof Error ? error.message : 'Error uploading file'
         );
+        // 추가: 업로드 실패 시 uploadedCount를 감소시킵니다.
+        setUploadedCount((prev) => Math.max(0, prev - 1));
       } finally {
         setUploading(false);
         setIsLoading(false);
@@ -101,9 +116,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'application/pdf': ['.pdf'] },
-    multiple: true,
-    maxFiles: MAX_FILES,
-    maxSize: MAX_FILE_SIZE,
+    multiple: false,
   });
 
   if (!user) {
@@ -129,10 +142,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
         {uploading ? (
           <CircularProgress />
         ) : isDragActive ? (
-          <Typography>Drop the PDF files here...</Typography>
+          <Typography>Drop the PDF file here...</Typography>
         ) : (
           <Typography>
-            Drag and drop up to 5 PDF files here, or click to select files
+            Drag and drop a PDF file here, or click to select a file
           </Typography>
         )}
       </Box>
