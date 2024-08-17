@@ -5,7 +5,7 @@ import { PDFExtract } from 'pdf.js-extract';
 
 admin.initializeApp();
 
-const API_KEY = functions.config().openai.apikey;
+const API_KEY = process.env.OPENAI_API_KEY;
 const API_URL = 'https://api.openai.com/v1/chat/completions';
 
 export const analyzePDF = functions.storage
