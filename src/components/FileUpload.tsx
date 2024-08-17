@@ -119,18 +119,18 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'application/pdf': ['.pdf'] },
-    multiple: false,
+    multiple: true,
     useFsAccessApi: false,
-    noClick: true, // 클릭 이벤트를 비활성화합니다
   });
 
   const handleButtonClick = (event: React.MouseEvent) => {
-    event.stopPropagation(); // 이벤트 버블링을 막습니다
+    event.stopPropagation();
     if (!isPickerActive) {
       setIsPickerActive(true);
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'application/pdf';
+      input.multiple = true;
       input.onchange = (e) => {
         const files = (e.target as HTMLInputElement).files;
         if (files) {
@@ -165,17 +165,19 @@ const FileUpload: React.FC<FileUploadProps> = ({
         {uploading ? (
           <CircularProgress />
         ) : isDragActive ? (
-          <Typography>Drop the file here</Typography>
+          <Typography>Drop the files here</Typography>
         ) : (
           <>
-            <Typography>Drag and drop a PDF file here</Typography>
+            <Typography>
+              Drag and drop PDF files here or click to select
+            </Typography>
             <Button
               variant="contained"
               color="primary"
               onClick={handleButtonClick}
               sx={{ mt: 2 }}
             >
-              Select File
+              Select Files
             </Button>
           </>
         )}
