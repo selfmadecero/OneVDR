@@ -32,8 +32,10 @@ export const analyzePDF = functions.storage
       const pdfExtract = new PDFExtract();
       const data = await pdfExtract.extract(url);
       const text = data.pages.map((page) => page.content).join(' ');
+      console.log('Extracted text from PDF:', text.substring(0, 500) + '...');
 
       // Call OpenAI API
+      console.log('Calling OpenAI API...');
       const response = await axios.post(
         API_URL,
         {
@@ -128,8 +130,10 @@ export const analyzePDF = functions.storage
           },
         }
       );
+      console.log('OpenAI API response received');
 
       const analysis = JSON.parse(response.data.choices[0].message.content);
+      console.log('OpenAI API 응답:', JSON.stringify(analysis, null, 2));
 
       // Find the corresponding document in Firestore and update it
       const userFiles = await admin

@@ -16,5 +16,5 @@ export interface FileInfo {
       };
   uploadDate: string;
   size: string;
-  uploadProgress?: number;
+  uploadProgress: number;
 }

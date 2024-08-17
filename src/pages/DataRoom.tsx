@@ -19,6 +19,7 @@ import {
   DialogActions,
   Button,
   styled,
+  CircularProgress,
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -33,6 +34,7 @@ import {
 import { db, auth } from '../services/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { FileInfo, User } from '../types';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -61,6 +63,28 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
   '&:hover': {
     backgroundColor: 'rgba(0, 0, 0, 0.06)',
   },
+}));
+
+const ProgressWrapper = styled(Box)(({ theme }) => ({
+  position: 'relative',
+  width: '100%',
+  height: 24,
+  borderRadius: 12,
+  overflow: 'hidden',
+}));
+
+const ProgressBar = styled(LinearProgress)(({ theme }) => ({
+  height: '100%',
+  borderRadius: 12,
+}));
+
+const ProgressLabel = styled(Typography)(({ theme }) => ({
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  color: theme.palette.getContrastText(theme.palette.primary.main),
+  fontWeight: 'bold',
 }));
 
 const DataRoom: React.FC = () => {
@@ -164,23 +188,36 @@ const DataRoom: React.FC = () => {
                 <StyledTableCell>{file.uploadDate}</StyledTableCell>
                 <StyledTableCell>{file.size}</StyledTableCell>
                 <StyledTableCell>
-                  <Chip
-                    label={
-                      typeof file.analysis === 'string'
-                        ? 'Analyzing'
-                        : 'Analyzed'
-                    }
-                    color={
-                      typeof file.analysis === 'string' ? 'warning' : 'success'
-                    }
-                    size="small"
-                    sx={{ borderRadius: '4px' }}
-                  />
+                  {typeof file.analysis === 'string' ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CircularProgress
+                        variant="determinate"
+                        value={file.uploadProgress || 0}
+                        size={24}
+                        thickness={4}
+                        sx={{ mr: 1 }}
+                      />
+                      <Typography variant="body2" color="text.secondary">
+                        {file.uploadProgress
+                          ? `${Math.round(file.uploadProgress)}%`
+                          : 'Analyzing...'}
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Chip
+                      label="Analyzed"
+                      color="success"
+                      size="small"
+                      icon={<CheckCircleIcon />}
+                      sx={{ borderRadius: '16px' }}
+                    />
+                  )}
                 </StyledTableCell>
                 <StyledTableCell>
                   <IconButton
                     size="small"
                     onClick={() => handleOpenDialog(file)}
+                    disabled={typeof file.analysis === 'string'}
                   >
                     <VisibilityIcon />
                   </IconButton>

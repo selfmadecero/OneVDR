@@ -11,4 +11,5 @@ export interface FileInfo {
   analysis: string | any;
   uploadDate: string;
   size: string;
+  uploadProgress: number;
 }

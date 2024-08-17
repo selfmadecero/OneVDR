@@ -8,7 +8,12 @@ import {
 } from '@mui/material';
 import { useDropzone } from 'react-dropzone';
 import { storage } from '../services/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  uploadBytesResumable,
+} from 'firebase/storage';
 import { getAnalysis } from '../services/openai';
 import { addFileInfo } from '../services/firebase';
 import { FileInfo, User } from '../types';
@@ -52,7 +57,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
       );
 
       if (validFiles.length === 0) {
-        setError('No valid files selected. Each file must be 10MB or less.');
+        setError(
+          'No valid files were uploaded. Please check file size limits.'
+        );
         return;
       }
 
@@ -61,52 +68,94 @@ const FileUpload: React.FC<FileUploadProps> = ({
         return;
       }
 
-      setUploading(true);
       setIsLoading(true);
+      setError(null);
 
-      try {
-        for (const file of validFiles) {
+      for (const file of validFiles) {
+        try {
           const storageRef = ref(
             storage,
             `users/${user.uid}/pdfs/${file.name}`
           );
-          await uploadBytes(storageRef, file);
-          const url = await getDownloadURL(storageRef);
+          const uploadTask = uploadBytesResumable(storageRef, file);
 
-          const fileInfo: FileInfo = {
-            id: Date.now().toString(), // 임시 ID 생성
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const progress =
+                (snapshot.bytesTransferred / snapshot.totalBytes) * 90; // 최대 90%까지만 진행
+              const fileInfo: FileInfo = {
+                id: file.name,
+                name: file.name,
+                url: '',
+                analysis: '',
+                uploadDate: new Date().toISOString(),
+                size: formatFileSize(file.size),
+                uploadProgress: progress,
+              };
+              onFileUploaded(fileInfo);
+            },
+            (error) => {
+              console.error('Error uploading file:', error);
+              setError('Failed to upload file. Please try again.');
+              setIsLoading(false);
+            },
+            async () => {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              const fileInfo: FileInfo = {
+                id: file.name,
+                name: file.name,
+                url: downloadURL,
+                analysis: '',
+                uploadDate: new Date().toISOString(),
+                size: formatFileSize(file.size),
+                uploadProgress: 90, // 업로드 완료 시 90%로 설정
+              };
+              onFileUploaded(fileInfo);
+
+              // 분석 시작
+              const updateProgress = (progress: number) => {
+                const totalProgress = 90 + (progress * 10) / 100; // 90%에서 100%까지
+                onFileUploaded({ ...fileInfo, uploadProgress: totalProgress });
+              };
+
+              try {
+                const analysis = await getAnalysis(
+                  `users/${user.uid}/pdfs/${file.name}`,
+                  updateProgress
+                );
+                const updatedFileInfo = {
+                  ...fileInfo,
+                  analysis,
+                  uploadProgress: 100, // 분석 완료 시 100%로 설정
+                };
+                onFileUploaded(updatedFileInfo);
+              } catch (error) {
+                console.error('Error analyzing file:', error);
+                setError('Failed to analyze file. Please try again.');
+                onFileUploaded({ ...fileInfo, uploadProgress: 90 }); // 분석 실패 시 90%로 유지
+              }
+            }
+          );
+
+          await addFileInfo(user.uid, {
+            id: file.name,
             name: file.name,
-            url,
-            analysis: 'Analysis in progress...',
-            uploadDate: new Date().toLocaleString(),
+            url: '',
+            analysis: '',
+            uploadDate: new Date().toISOString(),
             size: formatFileSize(file.size),
-          };
-
-          await addFileInfo(user.uid, fileInfo);
-          onFileUploaded(fileInfo);
-          setUploadedCount((prev) => prev + 1);
-
-          // Wait for 30 seconds before fetching the analysis
-          setTimeout(async () => {
-            const analysis = await getAnalysis(
-              `users/${user.uid}/pdfs/${file.name}`
-            );
-            const updatedFileInfo = { ...fileInfo, analysis };
-            await addFileInfo(user.uid, updatedFileInfo);
-            onFileUploaded(updatedFileInfo);
-          }, 30000);
+            uploadProgress: 0,
+          });
+        } catch (error) {
+          console.error('Error uploading file:', error);
+          setError('Failed to upload file. Please try again.');
         }
-      } catch (error) {
-        console.error('Error adding file info to Firestore:', error);
-        setError('Error uploading file info. Please try again.');
-        // 추가: 업로드 실패 시 uploadedCount를 감소시킵니다.
-        setUploadedCount((prev) => Math.max(0, prev - 1));
-      } finally {
-        setUploading(false);
-        setIsLoading(false);
       }
+
+      setIsLoading(false);
     },
-    [onFileUploaded, setIsLoading, setError, uploadedCount, user]
+    [user, onFileUploaded, setIsLoading, setError]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
