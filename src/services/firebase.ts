@@ -26,34 +26,49 @@ export const functions = getFunctions(app);
 export const addFileInfo = async (userId: string, fileInfo: FileInfo) => {
   try {
     const fileRef = doc(db, 'users', userId, 'files', fileInfo.name);
-    const analysis: AnalysisResult = JSON.parse(fileInfo.analysis as string);
+    let analysis: AnalysisResult;
+
+    if (typeof fileInfo.analysis === 'string') {
+      if (fileInfo.analysis === '') {
+        analysis = {
+          summary: '',
+          keywords: [],
+          categories: [],
+          tags: [],
+          keyInsights: [],
+          toneAndStyle: '',
+          targetAudience: '',
+          potentialApplications: [],
+        };
+      } else {
+        try {
+          analysis = JSON.parse(fileInfo.analysis);
+        } catch (error) {
+          console.error('Error parsing analysis JSON:', error);
+          analysis = {
+            summary: 'Error parsing analysis',
+            keywords: [],
+            categories: [],
+            tags: [],
+            keyInsights: [],
+            toneAndStyle: '',
+            targetAudience: '',
+            potentialApplications: [],
+          };
+        }
+      }
+    } else {
+      analysis = fileInfo.analysis;
+    }
 
     const structuredData = {
-      id: fileInfo.id,
-      name: fileInfo.name,
-      size: fileInfo.size,
-      status: fileInfo.status,
-      uploadDate: fileInfo.uploadDate,
-      uploadProgress: fileInfo.uploadProgress,
-      url: fileInfo.url,
-      analysis: {
-        summary: analysis.summary,
-        keywords: analysis.keywords,
-        categories: analysis.categories,
-        tags: analysis.tags,
-        keyInsights: analysis.keyInsights,
-        toneAndStyle: analysis.toneAndStyle,
-        targetAudience: analysis.targetAudience,
-        potentialApplications: analysis.potentialApplications,
-      },
+      ...fileInfo,
+      analysis,
     };
 
     await setDoc(fileRef, structuredData);
   } catch (error) {
     console.error('Error adding file info to Firestore:', error);
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-    }
     throw error;
   }
 };

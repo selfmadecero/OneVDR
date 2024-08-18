@@ -264,7 +264,7 @@ export const analyzePDF = functions.storage
   });
 
 export const analyzeDocument = functions
-  .runWith({ timeoutSeconds: 540 })
+  .runWith({ timeoutSeconds: 540, memory: '2GB' })
   .https.onRequest((request, response) => {
     corsHandler(request, response, async () => {
       if (!request.body || !request.body.filePath) {
@@ -273,17 +273,21 @@ export const analyzeDocument = functions
       }
 
       const { filePath } = request.body;
-      const userId = request.body.userId; // 클라이언트에서 userId를 전달받는다고 가정
+      const userId = request.body.userId;
       const bucket = admin.storage().bucket();
       const file = bucket.file(filePath);
 
       const fileName = filePath.split('/').pop() || 'Unknown';
       try {
         const analysis = await analyzePDFCommon(file, fileName, userId);
-        response.status(200).json(analysis);
+        response.status(200).json(JSON.parse(analysis));
       } catch (error) {
         console.error('Error in analyzeDocument:', error);
-        response.status(500).send('Internal Server Error');
+        response.status(500).json({
+          error: 'Internal Server Error',
+          message:
+            error instanceof Error ? error.message : 'Unknown error occurred',
+        });
       }
     });
   });

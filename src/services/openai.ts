@@ -44,14 +44,14 @@ export const getAnalysis = async (
   } catch (error: any) {
     console.error('Error fetching analysis:', error);
     if (error.message.includes('HTTP error! status: 401')) {
-      throw new Error('인증에 실패했습니다. 다시 로그인해 주세요.');
+      throw new Error('Authentication failed. Please log in again.');
     } else if (error.message.includes('HTTP error! status: 500')) {
       throw new Error(
-        '서버 내부 오류가 발생했습니다. 나중에 다시 시도해 주세요.'
+        'Internal server error occurred. Please try again later.'
       );
     } else {
       throw new Error(
-        `문서 분석 중 오류 발생: ${error.message || '알 수 없는 오류'}`
+        `Error analyzing document: ${error.message || 'Unknown error'}`
       );
     }
   }

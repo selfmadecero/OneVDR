@@ -131,7 +131,16 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 setError('파일 분석 중 오류가 발생했습니다.');
                 const failedFileInfo: FileInfo = {
                   ...fileInfo,
-                  analysis: 'Analysis failed',
+                  analysis: {
+                    summary: 'Analysis failed',
+                    keywords: [],
+                    categories: [],
+                    tags: [],
+                    keyInsights: [],
+                    toneAndStyle: '',
+                    targetAudience: '',
+                    potentialApplications: [],
+                  },
                   status: 'failed' as 'failed',
                 };
                 await addFileInfo(user.uid, failedFileInfo);
