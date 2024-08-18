@@ -99,41 +99,48 @@ const FileUpload: React.FC<FileUploadProps> = ({
             },
             (error) => {
               console.error('Error uploading file:', error);
-              setError('파일 업로드 중 오류가 발생했습니다.');
-              setUploading(false);
-              setIsLoading(false);
+              setError('File upload failed. Please try again.');
             },
             async () => {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              setAnalyzing(true);
-              const fileInfo: FileInfo = {
-                id: file.name,
-                name: file.name,
-                url: downloadURL,
-                analysis: '',
-                uploadDate: new Date().toISOString(),
-                size: formatFileSize(file.size),
-                uploadProgress: 100,
-                status: 'analyzing',
-              };
-              onFileUploaded(fileInfo);
-
+              let fileInfo: FileInfo;
               try {
+                const downloadURL = await getDownloadURL(
+                  uploadTask.snapshot.ref
+                );
+                setAnalyzing(true);
+
+                fileInfo = {
+                  id: file.name,
+                  name: file.name,
+                  url: downloadURL,
+                  analysis: '',
+                  uploadDate: new Date().toISOString(),
+                  size: formatFileSize(file.size),
+                  uploadProgress: 100,
+                  status: 'analyzing',
+                };
+
+                await addFileInfo(user.uid, fileInfo);
+                onFileUploaded(fileInfo);
+
                 const analysis = await getAnalysis(
                   `users/${user.uid}/pdfs/${file.name}`
                 );
+
                 const updatedFileInfo: FileInfo = {
                   ...fileInfo,
                   analysis: analysis,
                   status: 'completed' as 'completed',
                 };
+
                 await addFileInfo(user.uid, updatedFileInfo);
                 onFileUploaded(updatedFileInfo);
               } catch (error) {
                 console.error('Error analyzing file:', error);
-                setError('파일 분석 중 오류가 발생했습니다.');
+                setError('File analysis failed. Please try again.');
+
                 const failedFileInfo: FileInfo = {
-                  ...fileInfo,
+                  ...fileInfo!,
                   analysis: {
                     summary: 'Analysis failed',
                     keywords: [],
@@ -146,6 +153,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                   },
                   status: 'failed' as 'failed',
                 };
+
                 await addFileInfo(user.uid, failedFileInfo);
                 onFileUploaded(failedFileInfo);
               } finally {
@@ -155,20 +163,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
               }
             }
           );
-
-          await addFileInfo(user.uid, {
-            id: file.name,
-            name: file.name,
-            url: '',
-            analysis: '',
-            uploadDate: new Date().toISOString(),
-            size: formatFileSize(file.size),
-            uploadProgress: 0,
-            status: 'uploading',
-          });
         } catch (error) {
-          console.error('Error uploading file:', error);
-          setError('Failed to upload file. Please try again.');
+          console.error('Error initiating file upload:', error);
+          setError('Failed to initiate file upload. Please try again.');
           setUploading(false);
           setIsLoading(false);
         }

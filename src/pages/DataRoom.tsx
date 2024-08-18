@@ -11,6 +11,11 @@ import {
   LinearProgress,
   CircularProgress,
   Alert,
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { styled } from '@mui/material/styles';
@@ -26,17 +31,24 @@ import {
   doc,
 } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
+import { SelectChangeEvent } from '@mui/material/Select';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
+  padding: theme.spacing(4),
   borderRadius: theme.spacing(2),
-  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-  backdropFilter: 'blur(10px)',
+  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
+  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  backdropFilter: 'blur(20px)',
+  transition: 'all 0.3s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-5px)',
+    boxShadow: '0 15px 40px rgba(0, 0, 0, 0.15)',
+  },
 }));
 
 const CategoryChip = styled(Chip)(({ theme }) => ({
   margin: theme.spacing(0.5),
+  transition: 'all 0.2s ease-in-out',
   '&.MuiChip-outlined': {
     borderColor: theme.palette.primary.main,
     color: theme.palette.primary.main,
@@ -45,7 +57,12 @@ const CategoryChip = styled(Chip)(({ theme }) => ({
     backgroundColor: theme.palette.primary.main,
     color: theme.palette.common.white,
   },
+  '&:hover': {
+    transform: 'scale(1.05)',
+  },
 }));
+
+type SortOption = 'name' | 'date' | 'size';
 
 const DataRoom: React.FC = () => {
   const [user] = useAuthState(auth);
@@ -55,6 +72,7 @@ const DataRoom: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sortOption, setSortOption] = useState<SortOption>('date');
 
   useEffect(() => {
     if (user) {
@@ -126,64 +144,118 @@ const DataRoom: React.FC = () => {
     }
   };
 
+  const handleSortChange = (event: SelectChangeEvent<SortOption>) => {
+    setSortOption(event.target.value as SortOption);
+  };
+
+  const sortedFiles = [...filteredFiles].sort((a, b) => {
+    switch (sortOption) {
+      case 'name':
+        return a.name.localeCompare(b.name);
+      case 'date':
+        return (
+          new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
+        );
+      case 'size':
+        return parseInt(b.size) - parseInt(a.size);
+      default:
+        return 0;
+    }
+  });
+
   return (
-    <Box sx={{ width: '100%', p: 3, backgroundColor: '#f5f7fa' }}>
+    <Box
+      sx={{
+        width: '100%',
+        minHeight: '100vh',
+        p: 3,
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      }}
+    >
       <Typography
         variant="h4"
         component="h1"
-        sx={{ mb: 4, fontWeight: 'bold', color: '#333' }}
+        sx={{ mb: 4, fontWeight: 'bold', color: '#333', textAlign: 'center' }}
       >
-        Data Room
+        Virtual Data Room
       </Typography>
-      <StyledPaper elevation={0} sx={{ mb: 4 }}>
-        <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
-          Upload Documents
-        </Typography>
-        <FileUpload
-          onFileUploaded={handleFileUploaded}
-          setIsLoading={setIsLoading}
-          setError={setError}
-          user={user as User}
-        />
-      </StyledPaper>
-      <StyledPaper elevation={0} sx={{ mb: 4 }}>
-        <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
-          Filter by Category
-        </Typography>
-        <Box sx={{ mb: 2 }}>
-          {categories.map((category) => (
-            <CategoryChip
-              key={category}
-              label={category}
-              onClick={() => handleCategoryToggle(category)}
-              variant={
-                selectedCategories.includes(category) ? 'filled' : 'outlined'
-              }
+      <Grid container spacing={4}>
+        <Grid item xs={12} md={6}>
+          <StyledPaper elevation={0} sx={{ mb: 4 }}>
+            <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
+              Upload Documents
+            </Typography>
+            <FileUpload
+              onFileUploaded={handleFileUploaded}
+              setIsLoading={setIsLoading}
+              setError={setError}
+              user={user as User}
             />
-          ))}
-        </Box>
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Search files..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <IconButton>
-                  <SearchIcon />
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-        />
-      </StyledPaper>
+          </StyledPaper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <StyledPaper elevation={0} sx={{ mb: 4 }}>
+            <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
+              Filter and Search
+            </Typography>
+            <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap' }}>
+              {categories.map((category) => (
+                <CategoryChip
+                  key={category}
+                  label={category}
+                  onClick={() => handleCategoryToggle(category)}
+                  variant={
+                    selectedCategories.includes(category)
+                      ? 'filled'
+                      : 'outlined'
+                  }
+                />
+              ))}
+            </Box>
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Search files..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </StyledPaper>
+        </Grid>
+      </Grid>
       <StyledPaper elevation={0}>
-        <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
-          Your Files
-        </Typography>
-        <FileList files={filteredFiles} onDeleteFile={handleDeleteFile} />
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 2,
+          }}
+        >
+          <Typography variant="h6" sx={{ color: '#555' }}>
+            Your Files
+          </Typography>
+          <FormControl variant="outlined" size="small">
+            <InputLabel id="sort-select-label">Sort by</InputLabel>
+            <Select
+              labelId="sort-select-label"
+              value={sortOption}
+              onChange={handleSortChange}
+              label="Sort by"
+            >
+              <MenuItem value="date">Date</MenuItem>
+              <MenuItem value="name">Name</MenuItem>
+              <MenuItem value="size">Size</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+        <FileList files={sortedFiles} onDeleteFile={handleDeleteFile} />
       </StyledPaper>
       {error && (
         <Alert severity="error" sx={{ mt: 2 }}>
