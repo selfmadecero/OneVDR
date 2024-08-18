@@ -39,8 +39,21 @@ export const getAnalysis = async (
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const result = await response.json();
-    return result as AnalysisResult;
+    const reader = response.body!.getReader();
+    let result = '';
+    let progress = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      result += new TextDecoder().decode(value);
+      progress += value.length;
+      if (updateProgress) {
+        updateProgress(Math.min((progress / 1000) * 10, 100)); // 예시로 1000바이트마다 10% 증가
+      }
+    }
+
+    return JSON.parse(result) as AnalysisResult;
   } catch (error: any) {
     console.error('Error fetching analysis:', error);
     if (error.message.includes('HTTP error! status: 401')) {

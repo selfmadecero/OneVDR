@@ -13,6 +13,7 @@ import { FileInfo } from '../types';
 import FileAnalysisDialog from './FileAnalysisDialog';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { styled } from '@mui/material/styles';
+import DownloadIcon from '@mui/icons-material/Download';
 
 interface FileListProps {
   files: FileInfo[];
@@ -35,6 +36,14 @@ const FileList: React.FC<FileListProps> = ({ files, onDeleteFile }) => {
   const handleDeleteClick = (event: React.MouseEvent, fileId: string) => {
     event.stopPropagation();
     onDeleteFile(fileId);
+  };
+
+  const handleDownloadClick = (event: React.MouseEvent, fileUrl: string) => {
+    event.stopPropagation();
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.download = fileUrl.split('/').pop() || 'download';
+    link.click();
   };
 
   return (
@@ -83,6 +92,14 @@ const FileList: React.FC<FileListProps> = ({ files, onDeleteFile }) => {
                       ))}
                   </Box>
                 </Box>
+                <IconButton
+                  edge="end"
+                  aria-label="download"
+                  onClick={(event) => handleDownloadClick(event, file.url)}
+                  sx={{ ml: 2 }}
+                >
+                  <DownloadIcon />
+                </IconButton>
                 <IconButton
                   edge="end"
                   aria-label="delete"
