@@ -3,7 +3,7 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { doc, setDoc } from 'firebase/firestore';
-import { FileInfo } from '../types';
+import { FileInfo, AnalysisResult } from '../types';
 import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
@@ -26,7 +26,29 @@ export const functions = getFunctions(app);
 export const addFileInfo = async (userId: string, fileInfo: FileInfo) => {
   try {
     const fileRef = doc(db, 'users', userId, 'files', fileInfo.name);
-    await setDoc(fileRef, fileInfo);
+    const analysis: AnalysisResult = JSON.parse(fileInfo.analysis as string);
+
+    const structuredData = {
+      id: fileInfo.id,
+      name: fileInfo.name,
+      size: fileInfo.size,
+      status: fileInfo.status,
+      uploadDate: fileInfo.uploadDate,
+      uploadProgress: fileInfo.uploadProgress,
+      url: fileInfo.url,
+      analysis: {
+        summary: analysis.summary,
+        keywords: analysis.keywords,
+        categories: analysis.categories,
+        tags: analysis.tags,
+        keyInsights: analysis.keyInsights,
+        toneAndStyle: analysis.toneAndStyle,
+        targetAudience: analysis.targetAudience,
+        potentialApplications: analysis.potentialApplications,
+      },
+    };
+
+    await setDoc(fileRef, structuredData);
   } catch (error) {
     console.error('Error adding file info to Firestore:', error);
     if (error instanceof Error) {
