@@ -169,7 +169,6 @@ const DataRoom: React.FC = () => {
         width: '100%',
         minHeight: '100vh',
         p: 3,
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
       }}
     >
       <Typography
