@@ -97,7 +97,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             },
             (error) => {
               console.error('Error uploading file:', error);
-              setError('Failed to upload file. Please try again.');
+              setError('파일 업로드 중 오류가 발생했습니다.');
               setIsLoading(false);
             },
             async () => {
@@ -114,15 +114,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
               onFileUploaded(fileInfo);
 
               // 분석 시작
-              const updateProgress = (progress: number) => {
-                const totalProgress = 90 + (progress * 10) / 100; // 90%에서 100%까지
-                onFileUploaded({ ...fileInfo, uploadProgress: totalProgress });
-              };
-
               try {
                 const analysis = await getAnalysis(
-                  `users/${user.uid}/pdfs/${file.name}`,
-                  updateProgress
+                  `users/${user.uid}/pdfs/${file.name}`
                 );
                 const updatedFileInfo = {
                   ...fileInfo,
@@ -133,11 +127,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 onFileUploaded(updatedFileInfo);
               } catch (error) {
                 console.error('Error analyzing file:', error);
-                let errorMessage = 'An unknown error occurred';
-                if (error instanceof Error) {
-                  errorMessage = error.message;
-                }
-                setError(errorMessage);
+                setError('파일 분석 중 오류가 발생했습니다.');
                 const failedFileInfo = {
                   ...fileInfo,
                   analysis: 'Analysis failed',

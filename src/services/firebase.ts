@@ -29,6 +29,9 @@ export const addFileInfo = async (userId: string, fileInfo: FileInfo) => {
     await setDoc(fileRef, fileInfo);
   } catch (error) {
     console.error('Error adding file info to Firestore:', error);
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+    }
     throw error;
   }
 };
