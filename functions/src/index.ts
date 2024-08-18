@@ -60,7 +60,7 @@ async function analyzeTextWithOpenAI(
             },
             {
               role: 'user',
-              content: `Analyze the following part of the document titled "${fileName}":\n\n${chunk}. Please provide a concise summary (no more than 3 sentences) without repetition.`,
+              content: `Analyze the following part of the document titled "${fileName}":\n\n${chunk}. Please provide a very concise summary (no more than 2-3 sentences) focusing only on the key points without repetition.`,
             },
           ],
           response_format: {
@@ -74,7 +74,7 @@ async function analyzeTextWithOpenAI(
                   summary: {
                     type: 'string',
                     description:
-                      'A general summary of the document in 3-5 sentences, but keep it as concise as possible (maximum 3 sentences).',
+                      'A very concise summary of the document in 2-3 sentences, focusing only on the key points without repetition.',
                   },
                   keywords: {
                     type: 'array',
@@ -152,7 +152,7 @@ async function analyzeTextWithOpenAI(
       const parsedChunkAnalysis: AnalysisResult = JSON.parse(chunkAnalysis);
 
       // 결과 병합
-      fullAnalysis.summary += ' ' + parsedChunkAnalysis.summary;
+      fullAnalysis.summary = parsedChunkAnalysis.summary;
       fullAnalysis.keywords = [
         ...fullAnalysis.keywords,
         ...parsedChunkAnalysis.keywords,
