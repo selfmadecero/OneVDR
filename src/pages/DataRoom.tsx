@@ -176,7 +176,7 @@ const DataRoom: React.FC = () => {
         component="h1"
         sx={{ mb: 4, fontWeight: 'bold', color: '#333', textAlign: 'center' }}
       >
-        Virtual Data Room
+        Data Room
       </Typography>
       <Grid container spacing={4}>
         <Grid item xs={12} md={6}>
