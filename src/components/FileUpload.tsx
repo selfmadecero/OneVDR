@@ -83,7 +83,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             'state_changed',
             (snapshot) => {
               const progress =
-                (snapshot.bytesTransferred / snapshot.totalBytes) * 90; // 최대 90%까지만 진행
+                (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
               const fileInfo: FileInfo = {
                 id: file.name,
                 name: file.name,
@@ -92,6 +92,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 uploadDate: new Date().toISOString(),
                 size: formatFileSize(file.size),
                 uploadProgress: progress,
+                status: 'uploading',
               };
               onFileUploaded(fileInfo);
             },
@@ -109,29 +110,29 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 analysis: '',
                 uploadDate: new Date().toISOString(),
                 size: formatFileSize(file.size),
-                uploadProgress: 90, // 업로드 완료 시 90%로 설정
+                uploadProgress: 100,
+                status: 'analyzing',
               };
               onFileUploaded(fileInfo);
 
-              // 분석 시작
               try {
                 const analysis = await getAnalysis(
                   `users/${user.uid}/pdfs/${file.name}`
                 );
-                const updatedFileInfo = {
+                const updatedFileInfo: FileInfo = {
                   ...fileInfo,
                   analysis,
-                  uploadProgress: 100,
+                  status: 'completed' as 'completed',
                 };
                 await addFileInfo(user.uid, updatedFileInfo);
                 onFileUploaded(updatedFileInfo);
               } catch (error) {
                 console.error('Error analyzing file:', error);
                 setError('파일 분석 중 오류가 발생했습니다.');
-                const failedFileInfo = {
+                const failedFileInfo: FileInfo = {
                   ...fileInfo,
                   analysis: 'Analysis failed',
-                  uploadProgress: 100,
+                  status: 'failed' as 'failed',
                 };
                 await addFileInfo(user.uid, failedFileInfo);
                 onFileUploaded(failedFileInfo);
@@ -149,6 +150,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             uploadDate: new Date().toISOString(),
             size: formatFileSize(file.size),
             uploadProgress: 0,
+            status: 'uploading',
           });
         } catch (error) {
           console.error('Error uploading file:', error);

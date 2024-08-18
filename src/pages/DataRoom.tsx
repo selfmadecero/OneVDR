@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Box,
   Typography,
-  TableContainer,
+  Paper,
   Table,
+  TableBody,
+  TableCell,
+  TableContainer,
   TableHead,
   TableRow,
-  TableCell,
-  TableBody,
-  Paper,
-  LinearProgress,
-  Alert,
   IconButton,
   Chip,
   Dialog,
@@ -18,12 +17,18 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  LinearProgress,
+  Alert,
   styled,
   CircularProgress,
+  Tooltip,
 } from '@mui/material';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import DeleteIcon from '@mui/icons-material/Delete';
-import FileUpload from '../components/FileUpload';
+import {
+  DeleteOutline,
+  CloudUpload,
+  CheckCircle,
+  ErrorOutline,
+} from '@mui/icons-material';
 import {
   collection,
   query,
@@ -31,61 +36,36 @@ import {
   deleteDoc,
   doc,
 } from 'firebase/firestore';
-import { db, auth, storage } from '../services/firebase';
 import { ref, deleteObject } from 'firebase/storage';
-import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db, storage } from '../services/firebase';
 import { FileInfo, User } from '../types';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import FileUpload from '../components/FileUpload';
+import FileAnalysisDialog from '../components/FileAnalysisDialog';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-  backdropFilter: 'blur(10px)',
-  borderRadius: theme.spacing(2),
   padding: theme.spacing(3),
+  borderRadius: theme.spacing(2),
   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
 }));
 
-const StyledTableContainer = styled(TableContainer)<{
-  component?: React.ElementType;
-}>(({ theme }) => ({
+const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
   borderRadius: theme.spacing(2),
-  overflow: 'hidden',
   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
 }));
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  borderBottom: 'none',
+  fontWeight: 'bold',
+  backgroundColor: theme.palette.primary.main,
+  color: theme.palette.common.white,
 }));
 
 const StyledTableRow = styled(TableRow)(({ theme }) => ({
   '&:nth-of-type(odd)': {
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+    backgroundColor: theme.palette.action.hover,
   },
   '&:hover': {
-    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    backgroundColor: theme.palette.action.selected,
   },
-}));
-
-const ProgressWrapper = styled(Box)(({ theme }) => ({
-  position: 'relative',
-  width: '100%',
-  height: 24,
-  borderRadius: 12,
-  overflow: 'hidden',
-}));
-
-const ProgressBar = styled(LinearProgress)(({ theme }) => ({
-  height: '100%',
-  borderRadius: 12,
-}));
-
-const ProgressLabel = styled(Typography)(({ theme }) => ({
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  color: theme.palette.getContrastText(theme.palette.primary.main),
-  fontWeight: 'bold',
 }));
 
 const DataRoom: React.FC = () => {
@@ -128,13 +108,9 @@ const DataRoom: React.FC = () => {
   const handleDeleteFile = async (fileId: string) => {
     if (!user) return;
     try {
-      // Firestore에서 문서 삭제
       await deleteDoc(doc(db, 'users', user.uid, 'files', fileId));
-
-      // Storage에서 파일 삭제
       const storageRef = ref(storage, `users/${user.uid}/pdfs/${fileId}`);
       await deleteObject(storageRef);
-
       setFiles((prevFiles) => prevFiles.filter((file) => file.id !== fileId));
     } catch (error) {
       console.error('Error deleting file:', error);
@@ -149,10 +125,11 @@ const DataRoom: React.FC = () => {
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
+    setSelectedFile(null);
   };
 
   return (
-    <Box sx={{ width: '100%', p: 3 }}>
+    <Box sx={{ width: '100%', p: 3, backgroundColor: '#f5f7fa' }}>
       <Typography
         variant="h4"
         component="h1"
@@ -177,7 +154,7 @@ const DataRoom: React.FC = () => {
           {error}
         </Alert>
       )}
-      <StyledTableContainer component={Paper}>
+      <StyledTableContainer>
         <Table>
           <TableHead>
             <TableRow>
@@ -191,122 +168,80 @@ const DataRoom: React.FC = () => {
           <TableBody>
             {files.map((file) => (
               <StyledTableRow key={file.id}>
-                <StyledTableCell>{file.name}</StyledTableCell>
-                <StyledTableCell>{file.uploadDate}</StyledTableCell>
-                <StyledTableCell>{file.size}</StyledTableCell>
-                <StyledTableCell>
-                  {typeof file.analysis === 'string' ? (
+                <TableCell>
+                  <Tooltip title="View Analysis">
+                    <Typography
+                      variant="body2"
+                      component="a"
+                      onClick={() => handleOpenDialog(file)}
+                      sx={{ cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      {file.name}
+                    </Typography>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>
+                  {new Date(file.uploadDate).toLocaleString()}
+                </TableCell>
+                <TableCell>{file.size}</TableCell>
+                <TableCell>
+                  {file.status === 'uploading' ? (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <CircularProgress
-                        variant="determinate"
-                        value={file.uploadProgress || 0}
-                        size={24}
-                        thickness={4}
-                        sx={{ mr: 1 }}
-                      />
-                      <Typography variant="body2" color="text.secondary">
-                        {file.uploadProgress
-                          ? `${Math.round(file.uploadProgress)}%`
-                          : 'Analyzing...'}
-                      </Typography>
+                      <CloudUpload color="action" />
+                      <Box sx={{ width: '100%', ml: 1 }}>
+                        <LinearProgress
+                          variant="determinate"
+                          value={file.uploadProgress}
+                        />
+                      </Box>
+                      <Box sx={{ minWidth: 35, ml: 1 }}>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                        >{`${Math.round(file.uploadProgress)}%`}</Typography>
+                      </Box>
                     </Box>
+                  ) : file.status === 'analyzing' ? (
+                    <Chip
+                      icon={<CircularProgress size="small" />}
+                      label="Analyzing"
+                      color="primary"
+                      variant="outlined"
+                    />
+                  ) : file.status === 'completed' ? (
+                    <Chip
+                      icon={<CheckCircle />}
+                      label="Analysis Complete"
+                      color="success"
+                      variant="outlined"
+                    />
                   ) : (
                     <Chip
-                      label="Analyzed"
-                      color="success"
-                      size="small"
-                      icon={<CheckCircleIcon />}
-                      sx={{ borderRadius: '16px' }}
+                      icon={<ErrorOutline />}
+                      label="Analysis Failed"
+                      color="error"
+                      variant="outlined"
                     />
                   )}
-                </StyledTableCell>
-                <StyledTableCell>
+                </TableCell>
+                <TableCell>
                   <IconButton
-                    size="small"
-                    onClick={() => handleOpenDialog(file)}
-                    disabled={typeof file.analysis === 'string'}
-                  >
-                    <VisibilityIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
                     onClick={() => handleDeleteFile(file.id)}
+                    color="error"
                   >
-                    <DeleteIcon />
+                    <DeleteOutline />
                   </IconButton>
-                </StyledTableCell>
+                </TableCell>
               </StyledTableRow>
             ))}
           </TableBody>
         </Table>
       </StyledTableContainer>
-      <Dialog
+      <FileAnalysisDialog
         open={openDialog}
         onClose={handleCloseDialog}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>{selectedFile?.name}</DialogTitle>
-        <DialogContent>
-          {selectedFile && typeof selectedFile.analysis === 'object' ? (
-            <Box>
-              <Typography variant="h6">Summary</Typography>
-              <Typography>{selectedFile.analysis.summary}</Typography>
-              <Typography variant="h6">Keywords</Typography>
-              <ul>
-                {selectedFile.analysis.keywords.map(
-                  (keyword: any, index: number) => (
-                    <li key={index}>
-                      <strong>{keyword.word}</strong>: {keyword.explanation}
-                    </li>
-                  )
-                )}
-              </ul>
-              <Typography variant="h6">Categories</Typography>
-              <ul>
-                {selectedFile.analysis.categories.map(
-                  (category: string, index: number) => (
-                    <li key={index}>{category}</li>
-                  )
-                )}
-              </ul>
-              <Typography variant="h6">Tags</Typography>
-              <ul>
-                {selectedFile.analysis.tags.map(
-                  (tag: string, index: number) => (
-                    <li key={index}>{tag}</li>
-                  )
-                )}
-              </ul>
-              <Typography variant="h6">Key Insights</Typography>
-              <ul>
-                {selectedFile.analysis.keyInsights.map(
-                  (insight: string, index: number) => (
-                    <li key={index}>{insight}</li>
-                  )
-                )}
-              </ul>
-              <Typography variant="h6">Tone and Style</Typography>
-              <Typography>{selectedFile.analysis.toneAndStyle}</Typography>
-              <Typography variant="h6">Target Audience</Typography>
-              <Typography>{selectedFile.analysis.targetAudience}</Typography>
-              <Typography variant="h6">Potential Applications</Typography>
-              <ul>
-                {selectedFile.analysis.potentialApplications.map(
-                  (application: string, index: number) => (
-                    <li key={index}>{application}</li>
-                  )
-                )}
-              </ul>
-            </Box>
-          ) : (
-            <Typography>{selectedFile?.analysis}</Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Close</Button>
-        </DialogActions>
-      </Dialog>
+        file={selectedFile}
+      />
     </Box>
   );
 };

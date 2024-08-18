@@ -12,4 +12,5 @@ export interface FileInfo {
   uploadDate: string;
   size: string;
   uploadProgress: number;
+  status: 'uploading' | 'analyzing' | 'completed' | 'failed';
 }
