@@ -5,6 +5,7 @@ import {
   Box,
   Typography,
   Alert,
+  LinearProgress,
 } from '@mui/material';
 import { useDropzone } from 'react-dropzone';
 import { storage } from '../services/firebase';
@@ -42,7 +43,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
   user,
 }) => {
   const [uploading, setUploading] = useState(false);
-  const [uploadedCount, setUploadedCount] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState<{
+    [key: string]: number;
+  }>({});
+  const [analyzing, setAnalyzing] = useState(false);
   const [isPickerActive, setIsPickerActive] = useState(false);
 
   const onDrop = useCallback(
@@ -63,11 +67,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         return;
       }
 
-      if (uploadedCount + validFiles.length > MAX_FILES) {
-        setError(`You can only upload up to ${MAX_FILES} files in total.`);
-        return;
-      }
-
+      setUploading(true);
       setIsLoading(true);
       setError(null);
 
@@ -84,6 +84,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             (snapshot) => {
               const progress =
                 (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setUploadProgress((prev) => ({ ...prev, [file.name]: progress }));
               const fileInfo: FileInfo = {
                 id: file.name,
                 name: file.name,
@@ -99,10 +100,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
             (error) => {
               console.error('Error uploading file:', error);
               setError('파일 업로드 중 오류가 발생했습니다.');
+              setUploading(false);
               setIsLoading(false);
             },
             async () => {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              setAnalyzing(true);
               const fileInfo: FileInfo = {
                 id: file.name,
                 name: file.name,
@@ -146,6 +149,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 await addFileInfo(user.uid, failedFileInfo);
                 onFileUploaded(failedFileInfo);
               } finally {
+                setAnalyzing(false);
+                setUploading(false);
                 setIsLoading(false);
               }
             }
@@ -164,10 +169,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
         } catch (error) {
           console.error('Error uploading file:', error);
           setError('Failed to upload file. Please try again.');
+          setUploading(false);
+          setIsLoading(false);
         }
       }
-
-      setIsLoading(false);
     },
     [user, onFileUploaded, setIsLoading, setError]
   );
@@ -219,7 +224,20 @@ const FileUpload: React.FC<FileUploadProps> = ({
       >
         <input {...getInputProps()} />
         {uploading ? (
-          <CircularProgress />
+          <Box>
+            <Typography>Uploading files...</Typography>
+            {Object.entries(uploadProgress).map(([fileName, progress]) => (
+              <Box key={fileName} sx={{ width: '100%', mt: 2 }}>
+                <Typography variant="body2">{fileName}</Typography>
+                <LinearProgress variant="determinate" value={progress} />
+              </Box>
+            ))}
+          </Box>
+        ) : analyzing ? (
+          <Box>
+            <Typography>Analyzing files...</Typography>
+            <CircularProgress sx={{ mt: 2 }} />
+          </Box>
         ) : isDragActive ? (
           <Typography>Drop the files here</Typography>
         ) : (
