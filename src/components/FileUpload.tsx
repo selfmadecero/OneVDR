@@ -121,7 +121,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 );
                 const updatedFileInfo: FileInfo = {
                   ...fileInfo,
-                  analysis,
+                  analysis: analysis,
                   status: 'completed' as 'completed',
                 };
                 await addFileInfo(user.uid, updatedFileInfo);

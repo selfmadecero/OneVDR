@@ -11,6 +11,17 @@ const API_URL = 'https://api.openai.com/v1/chat/completions';
 
 const corsHandler = cors({ origin: true });
 
+interface AnalysisResult {
+  summary: string;
+  keywords: Array<{ word: string; explanation: string }>;
+  categories: string[];
+  tags: string[];
+  keyInsights: string[];
+  toneAndStyle: string;
+  targetAudience: string;
+  potentialApplications: string[];
+}
+
 async function extractTextFromPDF(file: any): Promise<string> {
   const [fileContents] = await file.download();
   const pdfExtract = new PDFExtract();
@@ -21,10 +32,19 @@ async function extractTextFromPDF(file: any): Promise<string> {
 async function analyzeTextWithOpenAI(
   text: string,
   fileName: string
-): Promise<string> {
+): Promise<AnalysisResult> {
   const maxTokens = 8000;
   const chunks = splitTextIntoChunks(text, maxTokens);
-  let fullAnalysis = [];
+  let fullAnalysis: AnalysisResult = {
+    summary: '',
+    keywords: [],
+    categories: [],
+    tags: [],
+    keyInsights: [],
+    toneAndStyle: '',
+    targetAudience: '',
+    potentialApplications: [],
+  };
 
   for (const chunk of chunks) {
     try {
@@ -40,7 +60,7 @@ async function analyzeTextWithOpenAI(
             },
             {
               role: 'user',
-              content: `Analyze the following part of the document titled "${fileName}":\n\n${chunk}`,
+              content: `Analyze the following part of the document titled "${fileName}":\n\n${chunk}. Please provide a concise summary (no more than 3 sentences) without repetition.`,
             },
           ],
           response_format: {
@@ -54,7 +74,7 @@ async function analyzeTextWithOpenAI(
                   summary: {
                     type: 'string',
                     description:
-                      'A general summary of the document in 3-5 sentences',
+                      'A general summary of the document in 3-5 sentences, but keep it as concise as possible (maximum 3 sentences).',
                   },
                   keywords: {
                     type: 'array',
@@ -128,58 +148,55 @@ async function analyzeTextWithOpenAI(
         }
       );
 
-      const analysisResult = response.data.choices[0].message.content;
-      fullAnalysis.push(JSON.parse(analysisResult));
+      const chunkAnalysis = response.data.choices[0].message.content;
+      const parsedChunkAnalysis: AnalysisResult = JSON.parse(chunkAnalysis);
+
+      // 결과 병합
+      fullAnalysis.summary += ' ' + parsedChunkAnalysis.summary;
+      fullAnalysis.keywords = [
+        ...fullAnalysis.keywords,
+        ...parsedChunkAnalysis.keywords,
+      ];
+      fullAnalysis.categories = [
+        ...new Set([
+          ...fullAnalysis.categories,
+          ...parsedChunkAnalysis.categories,
+        ]),
+      ];
+      fullAnalysis.tags = [
+        ...new Set([...fullAnalysis.tags, ...parsedChunkAnalysis.tags]),
+      ];
+      fullAnalysis.keyInsights = [
+        ...fullAnalysis.keyInsights,
+        ...parsedChunkAnalysis.keyInsights,
+      ];
+      fullAnalysis.toneAndStyle += ' ' + parsedChunkAnalysis.toneAndStyle;
+      fullAnalysis.targetAudience += ' ' + parsedChunkAnalysis.targetAudience;
+      fullAnalysis.potentialApplications = [
+        ...new Set([
+          ...fullAnalysis.potentialApplications,
+          ...parsedChunkAnalysis.potentialApplications,
+        ]),
+      ];
     } catch (error) {
-      console.error('Error in analyzeTextWithOpenAI:', error);
-      if (axios.isAxiosError(error)) {
-        console.error('OpenAI API error:', error.response?.data);
-        throw new functions.https.HttpsError(
-          'internal',
-          `OpenAI API error: ${error.response?.status} - ${
-            error.response?.data?.error?.message || 'Unknown error'
-          }`
-        );
-      }
-      throw new functions.https.HttpsError(
-        'internal',
-        'Unknown error occurred in analyzeTextWithOpenAI'
-      );
+      console.error('Error analyzing document:', error);
     }
   }
 
-  return JSON.stringify(mergeAnalysisResults(fullAnalysis));
-}
+  // 결과 정리
+  fullAnalysis.summary = fullAnalysis.summary.trim();
+  fullAnalysis.keywords = fullAnalysis.keywords.slice(0, 7);
+  fullAnalysis.categories = fullAnalysis.categories.slice(0, 3);
+  fullAnalysis.tags = fullAnalysis.tags.slice(0, 7);
+  fullAnalysis.keyInsights = fullAnalysis.keyInsights.slice(0, 5);
+  fullAnalysis.toneAndStyle = fullAnalysis.toneAndStyle.trim();
+  fullAnalysis.targetAudience = fullAnalysis.targetAudience.trim();
+  fullAnalysis.potentialApplications = fullAnalysis.potentialApplications.slice(
+    0,
+    3
+  );
 
-function mergeAnalysisResults(results: any[]): any {
-  if (results.length === 0) return {};
-  if (results.length === 1) return results[0];
-
-  const merged = { ...results[0] };
-  for (let i = 1; i < results.length; i++) {
-    merged.summary += ' ' + results[i].summary;
-    merged.keywords = [...merged.keywords, ...results[i].keywords];
-    merged.categories = [
-      ...new Set([...merged.categories, ...results[i].categories]),
-    ];
-    merged.tags = [...new Set([...merged.tags, ...results[i].tags])];
-    merged.keyInsights = [...merged.keyInsights, ...results[i].keyInsights];
-    merged.potentialApplications = [
-      ...new Set([
-        ...merged.potentialApplications,
-        ...results[i].potentialApplications,
-      ]),
-    ];
-  }
-
-  // Limit the number of items in each array
-  merged.keywords = merged.keywords.slice(0, 7);
-  merged.categories = merged.categories.slice(0, 3);
-  merged.tags = merged.tags.slice(0, 7);
-  merged.keyInsights = merged.keyInsights.slice(0, 5);
-  merged.potentialApplications = merged.potentialApplications.slice(0, 3);
-
-  return merged;
+  return fullAnalysis;
 }
 
 function splitTextIntoChunks(text: string, maxTokens: number): string[] {
@@ -206,7 +223,7 @@ async function analyzePDFCommon(
   file: any,
   fileName: string,
   userId: string
-): Promise<string> {
+): Promise<AnalysisResult> {
   try {
     const text = await extractTextFromPDF(file);
     const analysis = await analyzeTextWithOpenAI(text, fileName);
@@ -264,7 +281,7 @@ export const analyzePDF = functions.storage
   });
 
 export const analyzeDocument = functions
-  .runWith({ timeoutSeconds: 540, memory: '2GB' })
+  .runWith({ timeoutSeconds: 300, memory: '1GB' })
   .https.onRequest((request, response) => {
     corsHandler(request, response, async () => {
       if (!request.body || !request.body.filePath) {
@@ -280,7 +297,7 @@ export const analyzeDocument = functions
       const fileName = filePath.split('/').pop() || 'Unknown';
       try {
         const analysis = await analyzePDFCommon(file, fileName, userId);
-        response.status(200).json(JSON.parse(analysis));
+        response.status(200).json(analysis);
       } catch (error) {
         console.error('Error in analyzeDocument:', error);
         response.status(500).json({
