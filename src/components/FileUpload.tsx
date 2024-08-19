@@ -71,13 +71,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
     const simulateAnalysisProgress = (fileName: string) => {
       let progress = 0;
       const interval = setInterval(() => {
-        progress += Math.random() * 10;
-        if (progress > 100) {
-          progress = 100;
+        progress += Math.random() * 5; // 진행 속도를 줄입니다
+        if (progress > 95) {
+          progress = 95; // 최대 95%까지만 채웁니다
           clearInterval(interval);
         }
         setAnalysisProgress((prev) => ({ ...prev, [fileName]: progress }));
-      }, 1000);
+      }, 2000); // 업데이트 간격을 2초로 늘립니다
       return interval;
     };
 
@@ -125,7 +125,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
       const storageRef = ref(storage, `users/${user.uid}/pdfs/${file.name}`);
       const uploadTask = uploadBytesResumable(storageRef, file);
 
-      setUploadTasks((prev) => ({ ...prev, [file.name]: uploadTask }));
+      setUploadTasks((prev: { [key: string]: UploadTask }) => ({
+        ...prev,
+        [file.name]: uploadTask,
+      }));
 
       uploadTask.on(
         'state_changed',
@@ -213,7 +216,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       setFiles((prevFiles) =>
         prevFiles.filter((file) => file.name !== fileName)
       );
-      setUploadTasks((prev) => {
+      setUploadTasks((prev: { [key: string]: UploadTask }) => {
         const newTasks = { ...prev };
         delete newTasks[fileName];
         return newTasks;
