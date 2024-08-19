@@ -111,6 +111,7 @@ const DataRoom: React.FC = () => {
             );
           }
         });
+        console.log('Fetched files:', newFiles); // Added console log
         setFiles(newFiles);
         setCategories(Array.from(newCategories));
       });
@@ -195,7 +196,7 @@ const DataRoom: React.FC = () => {
   };
 
   const handleFileSelect = (file: FileInfo) => {
-    // 파일 선택 시 동작 추가 (예: 파일 상세 정보 표시)
+    // 파일 선택 시 ���작 추가 (예: 파일 상세 정보 표시)
   };
 
   return (
@@ -298,13 +299,7 @@ const DataRoom: React.FC = () => {
             </Select>
           </FormControl>
         </Box>
-        <FolderView
-          folders={folders}
-          files={sortedFiles}
-          onFolderSelect={handleFolderSelect}
-          onFileSelect={handleFileSelect}
-          onDeleteFile={handleDeleteFile}
-        />
+        <FileList files={sortedFiles} onDeleteFile={handleDeleteFile} />
       </StyledPaper>
       {error && (
         <Alert severity="error" sx={{ mt: 2 }}>
