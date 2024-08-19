@@ -1,6 +1,19 @@
 import React from 'react';
-import { Box, Typography, Chip, Grid, Paper } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Chip,
+  Grid,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  IconButton,
+} from '@mui/material';
 import { styled } from '@mui/material/styles';
+import FolderIcon from '@mui/icons-material/Folder';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 
 const ProjectPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
@@ -14,33 +27,50 @@ const ProjectPaper = styled(Paper)(({ theme }) => ({
   },
 }));
 
-const ProjectList: React.FC = () => {
-  // 임시 프로젝트 데이터
-  const projects = [
-    { id: 1, name: '프로젝트 A', category: '개발' },
-    { id: 2, name: '프로젝트 B', category: '마케팅' },
-    { id: 3, name: '프로젝트 C', category: '디자인' },
-    { id: 4, name: '프로젝트 D', category: '연구' },
-  ];
+interface Project {
+  id: string;
+  name: string;
+  category: string;
+}
 
+interface ProjectListProps {
+  projects: Project[];
+  onProjectSelect: (project: Project) => void;
+}
+
+const ProjectList: React.FC<ProjectListProps> = ({
+  projects,
+  onProjectSelect,
+}) => {
   return (
-    <Grid container spacing={3}>
+    <List>
       {projects.map((project) => (
-        <Grid item xs={12} sm={6} md={3} key={project.id}>
-          <ProjectPaper elevation={2}>
-            <Typography variant="h6" gutterBottom>
-              {project.name}
-            </Typography>
-            <Box sx={{ flexGrow: 1 }} />
-            <Chip
-              label={project.category}
-              size="small"
-              sx={{ alignSelf: 'flex-start', mt: 1 }}
-            />
-          </ProjectPaper>
-        </Grid>
+        <ListItem
+          key={project.id}
+          button
+          onClick={() => onProjectSelect(project)}
+        >
+          <ListItemIcon>
+            <FolderIcon />
+          </ListItemIcon>
+          <ListItemText
+            primary={
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="h6" gutterBottom>
+                  {project.name}
+                </Typography>
+                <Box sx={{ flexGrow: 1 }} />
+                <Chip
+                  label={project.category}
+                  size="small"
+                  sx={{ alignSelf: 'flex-start', mt: 1 }}
+                />
+              </Box>
+            }
+          />
+        </ListItem>
       ))}
-    </Grid>
+    </List>
   );
 };
 

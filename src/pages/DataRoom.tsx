@@ -24,6 +24,7 @@ import { FileInfo, User } from '../types';
 import FileUpload from '../components/FileUpload';
 import FileList from '../components/FileList';
 import ProjectList from '../components/ProjectList';
+import FolderView from '../components/FolderView';
 import {
   collection,
   query,
@@ -65,6 +66,18 @@ const CategoryChip = styled(Chip)(({ theme }) => ({
 
 type SortOption = 'name' | 'date' | 'size';
 
+interface Project {
+  id: string;
+  name: string;
+  category: string;
+}
+
+interface Folder {
+  id: string;
+  name: string;
+  parentId: string | null;
+}
+
 const DataRoom: React.FC = () => {
   const [user] = useAuthState(auth);
   const [files, setFiles] = useState<FileInfo[]>([]);
@@ -74,6 +87,13 @@ const DataRoom: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>('date');
+  const [projects, setProjects] = useState<Project[]>([
+    { id: '1', name: 'Project A', category: 'Development' },
+    { id: '2', name: 'Project B', category: 'Marketing' },
+  ]);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [currentFolder, setCurrentFolder] = useState<Folder | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -164,6 +184,20 @@ const DataRoom: React.FC = () => {
     }
   });
 
+  const handleProjectSelect = (project: Project) => {
+    setSelectedProject(project);
+    // 프로젝트에 해당하는 폴더와 파일을 불러오는 로직 추가
+  };
+
+  const handleFolderSelect = (folder: Folder) => {
+    setCurrentFolder(folder);
+    // 선택된 폴더의 하위 폴더와 파일을 불러오는 로직 추가
+  };
+
+  const handleFileSelect = (file: FileInfo) => {
+    // 파일 선택 시 동작 추가 (예: 파일 상세 정보 표시)
+  };
+
   return (
     <Box
       sx={{
@@ -233,7 +267,10 @@ const DataRoom: React.FC = () => {
         <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
           Projects
         </Typography>
-        <ProjectList />
+        <ProjectList
+          projects={projects}
+          onProjectSelect={handleProjectSelect}
+        />
       </StyledPaper>
       <StyledPaper elevation={0}>
         <Box
@@ -245,7 +282,7 @@ const DataRoom: React.FC = () => {
           }}
         >
           <Typography variant="h6" sx={{ color: '#555' }}>
-            Your Files
+            {selectedProject ? `Files in ${selectedProject.name}` : 'All Files'}
           </Typography>
           <FormControl variant="outlined" size="small">
             <InputLabel id="sort-select-label">Sort by</InputLabel>
@@ -261,7 +298,13 @@ const DataRoom: React.FC = () => {
             </Select>
           </FormControl>
         </Box>
-        <FileList files={sortedFiles} onDeleteFile={handleDeleteFile} />
+        <FolderView
+          folders={folders}
+          files={sortedFiles}
+          onFolderSelect={handleFolderSelect}
+          onFileSelect={handleFileSelect}
+          onDeleteFile={handleDeleteFile}
+        />
       </StyledPaper>
       {error && (
         <Alert severity="error" sx={{ mt: 2 }}>
