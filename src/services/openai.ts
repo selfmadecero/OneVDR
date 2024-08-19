@@ -49,7 +49,7 @@ export const getAnalysis = async (
       result += new TextDecoder().decode(value);
       progress += value.length;
       if (updateProgress) {
-        updateProgress(Math.min((progress / 1000) * 10, 100)); // 예시로 1000바이트마다 10% 증가
+        updateProgress(Math.min((progress / 1000) * 10, 100)); // Example: Increase by 10% every 1000 bytes
       }
     }
 
