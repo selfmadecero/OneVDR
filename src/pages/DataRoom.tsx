@@ -23,6 +23,7 @@ import { auth, db, storage } from '../services/firebase';
 import { FileInfo, User } from '../types';
 import FileUpload from '../components/FileUpload';
 import FileList from '../components/FileList';
+import ProjectList from '../components/ProjectList';
 import {
   collection,
   query,
@@ -228,6 +229,12 @@ const DataRoom: React.FC = () => {
           </StyledPaper>
         </Grid>
       </Grid>
+      <StyledPaper elevation={0} sx={{ mb: 4 }}>
+        <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
+          Projects
+        </Typography>
+        <ProjectList />
+      </StyledPaper>
       <StyledPaper elevation={0}>
         <Box
           sx={{
