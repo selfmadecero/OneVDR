@@ -1,19 +1,17 @@
-import React, { useState } from 'react';
+import DeleteIcon from "@mui/icons-material/Delete";
+import DownloadIcon from "@mui/icons-material/Download";
 import {
-  Typography,
-  Chip,
-  IconButton,
   Box,
-  Grid,
   Card,
   CardContent,
-  CardActions,
-} from '@mui/material';
-import { FileInfo } from '../types';
-import FileAnalysisDialog from './FileAnalysisDialog';
-import DeleteIcon from '@mui/icons-material/Delete';
-import { styled } from '@mui/material/styles';
-import DownloadIcon from '@mui/icons-material/Download';
+  Chip,
+  Grid,
+  IconButton,
+  Typography,
+} from "@mui/material";
+import React, { useState } from "react";
+import { FileInfo } from "../types";
+import FileAnalysisDialog from "./FileAnalysisDialog";
 
 interface FileListProps {
   files: FileInfo[];
@@ -40,9 +38,9 @@ const FileList: React.FC<FileListProps> = ({ files, onDeleteFile }) => {
 
   const handleDownloadClick = (event: React.MouseEvent, fileUrl: string) => {
     event.stopPropagation();
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = fileUrl;
-    link.download = fileUrl.split('/').pop() || 'download';
+    link.download = fileUrl.split("/").pop() || "download";
     link.click();
   };
 
@@ -53,22 +51,22 @@ const FileList: React.FC<FileListProps> = ({ files, onDeleteFile }) => {
           <Grid item xs={12} key={file.id}>
             <Card
               sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease-in-out',
-                '&:hover': { transform: 'translateY(-5px)', boxShadow: 3 },
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                cursor: "pointer",
+                transition: "all 0.3s ease-in-out",
+                "&:hover": { transform: "translateY(-5px)", boxShadow: 3 },
               }}
               onClick={() => handleFileClick(file)}
             >
               <CardContent
                 sx={{
                   flexGrow: 1,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  width: '100%',
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  width: "100%",
                 }}
               >
                 <Box sx={{ flexGrow: 1 }}>
@@ -76,11 +74,11 @@ const FileList: React.FC<FileListProps> = ({ files, onDeleteFile }) => {
                     {file.name}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Size: {file.size} | Status: {file.status} | Date:{' '}
+                    Size: {file.size} | Status: {file.status} | Date:{" "}
                     {new Date(file.uploadDate).toLocaleDateString()}
                   </Typography>
                   <Box sx={{ mt: 1 }}>
-                    {typeof file.analysis === 'object' &&
+                    {typeof file.analysis === "object" &&
                       file.analysis.categories &&
                       file.analysis.categories.map((category) => (
                         <Chip

@@ -1,23 +1,17 @@
-import React, { useState, useCallback } from 'react';
 import {
+  Alert,
+  Box,
   Button,
   CircularProgress,
-  Box,
-  Typography,
-  Alert,
   LinearProgress,
-} from '@mui/material';
-import { useDropzone } from 'react-dropzone';
-import { storage } from '../services/firebase';
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  uploadBytesResumable,
-} from 'firebase/storage';
-import { getAnalysis } from '../services/openai';
-import { addFileInfo } from '../services/firebase';
-import { FileInfo, User } from '../types';
+  Typography,
+} from "@mui/material";
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import React, { useCallback, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { addFileInfo, storage } from "../services/firebase";
+import { getAnalysis } from "../services/openai";
+import { FileInfo, User } from "../types";
 
 interface FileUploadProps {
   onFileUploaded: (fileInfo: FileInfo) => void;
@@ -30,10 +24,10 @@ const MAX_FILES = 10;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const formatFileSize = (bytes: number): string => {
-  if (bytes < 1024) return bytes + ' bytes';
-  else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-  else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
-  else return (bytes / 1073741824).toFixed(1) + ' GB';
+  if (bytes < 1024) return bytes + " bytes";
+  else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+  else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + " MB";
+  else return (bytes / 1073741824).toFixed(1) + " GB";
 };
 
 const FileUpload: React.FC<FileUploadProps> = ({
@@ -52,7 +46,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
       if (!user) {
-        setError('Please sign in to upload files.');
+        setError("Please sign in to upload files.");
         return;
       }
 
@@ -62,7 +56,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       if (validFiles.length === 0) {
         setError(
-          'No valid files were uploaded. Please check file size limits.'
+          "No valid files were uploaded. Please check file size limits."
         );
         return;
       }
@@ -80,7 +74,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           const uploadTask = uploadBytesResumable(storageRef, file);
 
           uploadTask.on(
-            'state_changed',
+            "state_changed",
             (snapshot) => {
               const progress =
                 (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
@@ -88,18 +82,18 @@ const FileUpload: React.FC<FileUploadProps> = ({
               const fileInfo: FileInfo = {
                 id: file.name,
                 name: file.name,
-                url: '',
-                analysis: '',
+                url: "",
+                analysis: "",
                 uploadDate: new Date().toISOString(),
                 size: formatFileSize(file.size),
                 uploadProgress: progress,
-                status: 'uploading',
+                status: "uploading",
               };
               onFileUploaded(fileInfo);
             },
             (error) => {
-              console.error('Error uploading file:', error);
-              setError('File upload failed. Please try again.');
+              console.error("Error uploading file:", error);
+              setError("File upload failed. Please try again.");
             },
             async () => {
               let fileInfo: FileInfo;
@@ -113,11 +107,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
                   id: file.name,
                   name: file.name,
                   url: downloadURL,
-                  analysis: '',
+                  analysis: "",
                   uploadDate: new Date().toISOString(),
                   size: formatFileSize(file.size),
                   uploadProgress: 100,
-                  status: 'analyzing',
+                  status: "analyzing",
                 };
 
                 await addFileInfo(user.uid, fileInfo);
@@ -130,28 +124,28 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 const updatedFileInfo: FileInfo = {
                   ...fileInfo,
                   analysis: analysis,
-                  status: 'completed' as 'completed',
+                  status: "completed" as "completed",
                 };
 
                 await addFileInfo(user.uid, updatedFileInfo);
                 onFileUploaded(updatedFileInfo);
               } catch (error) {
-                console.error('Error analyzing file:', error);
-                setError('File analysis failed. Please try again.');
+                console.error("Error analyzing file:", error);
+                setError("File analysis failed. Please try again.");
 
                 const failedFileInfo: FileInfo = {
                   ...fileInfo!,
                   analysis: {
-                    summary: 'Analysis failed',
+                    summary: "Analysis failed",
                     keywords: [],
                     categories: [],
                     tags: [],
                     keyInsights: [],
-                    toneAndStyle: '',
-                    targetAudience: '',
+                    toneAndStyle: "",
+                    targetAudience: "",
                     potentialApplications: [],
                   },
-                  status: 'failed' as 'failed',
+                  status: "failed" as "failed",
                 };
 
                 await addFileInfo(user.uid, failedFileInfo);
@@ -164,8 +158,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
             }
           );
         } catch (error) {
-          console.error('Error initiating file upload:', error);
-          setError('Failed to initiate file upload. Please try again.');
+          console.error("Error initiating file upload:", error);
+          setError("Failed to initiate file upload. Please try again.");
           setUploading(false);
           setIsLoading(false);
         }
@@ -176,7 +170,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'application/pdf': ['.pdf'] },
+    accept: { "application/pdf": [".pdf"] },
     multiple: true,
     useFsAccessApi: false,
   });
@@ -185,9 +179,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
     event.stopPropagation();
     if (!isPickerActive) {
       setIsPickerActive(true);
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'application/pdf';
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "application/pdf";
       input.multiple = true;
       input.onchange = (e) => {
         const files = (e.target as HTMLInputElement).files;
@@ -209,13 +203,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
       <Box
         {...getRootProps()}
         sx={{
-          border: '2px dashed #cccccc',
+          border: "2px dashed #cccccc",
           borderRadius: 2,
           p: 3,
-          textAlign: 'center',
-          cursor: 'pointer',
-          '&:hover': {
-            backgroundColor: '#f0f0f0',
+          textAlign: "center",
+          cursor: "pointer",
+          "&:hover": {
+            backgroundColor: "#f0f0f0",
           },
         }}
       >
@@ -224,7 +218,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <Box>
             <Typography>Uploading files...</Typography>
             {Object.entries(uploadProgress).map(([fileName, progress]) => (
-              <Box key={fileName} sx={{ width: '100%', mt: 2 }}>
+              <Box key={fileName} sx={{ width: "100%", mt: 2 }}>
                 <Typography variant="body2">{fileName}</Typography>
                 <LinearProgress variant="determinate" value={progress} />
               </Box>

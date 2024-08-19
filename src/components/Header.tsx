@@ -1,8 +1,8 @@
-import React from 'react';
-import { AppBar, Toolbar, Typography, Button } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { auth } from '../services/firebase';
-import { useAuthState } from 'react-firebase-hooks/auth';
+import { AppBar, Button, Toolbar, Typography } from "@mui/material";
+import React from "react";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { useNavigate } from "react-router-dom";
+import { auth } from "../services/firebase";
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -11,17 +11,17 @@ const Header: React.FC = () => {
   const handleLogout = async () => {
     try {
       await auth.signOut();
-      window.location.href = '/';
+      window.location.href = "/";
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error("Error signing out:", error);
     }
   };
 
   const handleLogoClick = () => {
     if (user) {
-      navigate('/dataroom');
+      navigate("/dataroom");
     } else {
-      navigate('/');
+      navigate("/");
     }
   };
 
@@ -30,9 +30,9 @@ const Header: React.FC = () => {
       position="fixed"
       sx={{
         zIndex: (theme) => theme.zIndex.drawer + 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(10px)',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        backgroundColor: "rgba(255, 255, 255, 0.8)",
+        backdropFilter: "blur(10px)",
+        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
       }}
     >
       <Toolbar>
@@ -41,11 +41,11 @@ const Header: React.FC = () => {
           component="div"
           sx={{
             flexGrow: 1,
-            color: '#333',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            '&:hover': {
-              color: '#2196f3',
+            color: "#333",
+            cursor: "pointer",
+            fontWeight: "bold",
+            "&:hover": {
+              color: "#2196f3",
             },
           }}
           onClick={handleLogoClick}
@@ -57,9 +57,9 @@ const Header: React.FC = () => {
             color="inherit"
             onClick={handleLogout}
             sx={{
-              color: '#333',
-              '&:hover': {
-                backgroundColor: 'rgba(33, 150, 243, 0.1)',
+              color: "#333",
+              "&:hover": {
+                backgroundColor: "rgba(33, 150, 243, 0.1)",
               },
             }}
           >
@@ -69,7 +69,7 @@ const Header: React.FC = () => {
           <Button
             color="primary"
             variant="contained"
-            onClick={() => navigate('/auth')}
+            onClick={() => navigate("/auth")}
           >
             Sign In
           </Button>

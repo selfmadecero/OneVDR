@@ -1,20 +1,20 @@
-import React from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
   Box,
+  Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
   List,
   ListItem,
   ListItemText,
-  Divider,
   styled,
-} from '@mui/material';
-import { FileInfo } from '../types';
+  Typography,
+} from "@mui/material";
+import React from "react";
+import { FileInfo } from "../types";
 
 interface Keyword {
   word: string;
@@ -44,7 +44,7 @@ const StyledChip = styled(Chip)(({ theme }) => ({
 
 const StyledListItem = styled(ListItem)(({ theme }) => ({
   padding: theme.spacing(2),
-  '&:hover': {
+  "&:hover": {
     backgroundColor: theme.palette.action.hover,
   },
 }));
@@ -54,7 +54,7 @@ const FileAnalysisDialog: React.FC<FileAnalysisDialogProps> = ({
   onClose,
   file,
 }) => {
-  if (!file || typeof file.analysis === 'string') {
+  if (!file || typeof file.analysis === "string") {
     return null;
   }
 
