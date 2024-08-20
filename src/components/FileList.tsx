@@ -10,8 +10,10 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
+import ShareIcon from '@mui/icons-material/Share';
 import { FileInfo } from '../types';
 import FileAnalysisDialog from './FileAnalysisDialog';
+import FileShare from './FileShare';
 
 interface FileListProps {
   files: FileInfo[];
@@ -21,6 +23,8 @@ interface FileListProps {
 const FileList: React.FC<FileListProps> = ({ files, onDeleteFile }) => {
   const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [fileToShare, setFileToShare] = useState<FileInfo | null>(null);
 
   const handleFileClick = (file: FileInfo) => {
     setSelectedFile(file);
@@ -42,6 +46,12 @@ const FileList: React.FC<FileListProps> = ({ files, onDeleteFile }) => {
     link.href = fileUrl;
     link.download = fileUrl.split('/').pop() || 'download';
     link.click();
+  };
+
+  const handleShareClick = (event: React.MouseEvent, file: FileInfo) => {
+    event.stopPropagation();
+    setFileToShare(file);
+    setShareDialogOpen(true);
   };
 
   return (
@@ -92,6 +102,14 @@ const FileList: React.FC<FileListProps> = ({ files, onDeleteFile }) => {
                 </Box>
                 <IconButton
                   edge="end"
+                  aria-label="share"
+                  onClick={(event) => handleShareClick(event, file)}
+                  sx={{ ml: 2 }}
+                >
+                  <ShareIcon />
+                </IconButton>
+                <IconButton
+                  edge="end"
                   aria-label="download"
                   onClick={(event) => handleDownloadClick(event, file.url)}
                   sx={{ ml: 2 }}
@@ -116,6 +134,13 @@ const FileList: React.FC<FileListProps> = ({ files, onDeleteFile }) => {
         onClose={handleCloseDialog}
         file={selectedFile}
       />
+      {fileToShare && (
+        <FileShare
+          file={fileToShare}
+          open={shareDialogOpen}
+          onClose={() => setShareDialogOpen(false)}
+        />
+      )}
     </>
   );
 };
