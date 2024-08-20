@@ -30,6 +30,7 @@ interface FileUploadProps {
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   user: User;
+  currentFolder: string | null;
 }
 
 const MAX_FILES = 10;

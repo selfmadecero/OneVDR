@@ -18,7 +18,7 @@ import {
   MenuItem,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import { styled } from '@mui/material/styles';
+import { styled, useTheme } from '@mui/material/styles';
 import { auth, db, storage } from '../services/firebase';
 import { FileInfo, User } from '../types';
 import FileUpload from '../components/FileUpload';
@@ -36,11 +36,12 @@ import { ref, deleteObject } from 'firebase/storage';
 import { SelectChangeEvent } from '@mui/material/Select';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(4),
+  padding: theme.spacing(3),
+  marginBottom: theme.spacing(3),
   borderRadius: theme.spacing(2),
   boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
-  backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  backdropFilter: 'blur(20px)',
+  backdropFilter: 'blur(10px)',
+  backgroundColor: 'rgba(255, 255, 255, 0.8)',
   transition: 'all 0.3s ease-in-out',
   '&:hover': {
     transform: 'translateY(-5px)',
@@ -79,6 +80,7 @@ interface Folder {
 }
 
 const DataRoom: React.FC = () => {
+  const theme = useTheme();
   const [user] = useAuthState(auth);
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -196,57 +198,38 @@ const DataRoom: React.FC = () => {
   };
 
   const handleFileSelect = (file: FileInfo) => {
-    // 파일 선택 시 ���작 추가 (예: 파일 상세 정보 표시)
+    // 파일 선택 시 작 추가 (예: 파일 상세 정보 표시)
   };
 
   return (
-    <Box
-      sx={{
-        width: '100%',
-        minHeight: '100vh',
-        p: 3,
-      }}
-    >
-      <Typography
-        variant="h4"
-        component="h1"
-        sx={{ mb: 4, fontWeight: 'bold', color: '#333', textAlign: 'center' }}
-      >
-        Data Room
-      </Typography>
-      <Grid container spacing={4}>
-        <Grid item xs={12} md={6}>
-          <StyledPaper elevation={0} sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
-              Upload Documents
-            </Typography>
-            <FileUpload
-              onFileUploaded={handleFileUploaded}
-              setIsLoading={setIsLoading}
-              setError={setError}
-              user={user as User}
-            />
-          </StyledPaper>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <StyledPaper elevation={0} sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
-              Filter and Search
-            </Typography>
-            <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap' }}>
-              {categories.map((category) => (
-                <CategoryChip
-                  key={category}
-                  label={category}
-                  onClick={() => handleCategoryToggle(category)}
-                  variant={
-                    selectedCategories.includes(category)
-                      ? 'filled'
-                      : 'outlined'
-                  }
-                />
-              ))}
-            </Box>
+    <Box sx={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+      <StyledPaper>
+        <Typography
+          variant="h4"
+          gutterBottom
+          sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
+        >
+          Upload Documents
+        </Typography>
+        <FileUpload
+          onFileUploaded={handleFileUploaded}
+          setIsLoading={setIsLoading}
+          setError={setError}
+          user={user as User}
+          currentFolder={currentFolder?.id || null}
+        />
+      </StyledPaper>
+
+      <StyledPaper>
+        <Typography
+          variant="h4"
+          gutterBottom
+          sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
+        >
+          Filter and Search
+        </Typography>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12}>
             <TextField
               fullWidth
               variant="outlined"
@@ -260,52 +243,82 @@ const DataRoom: React.FC = () => {
                   </InputAdornment>
                 ),
               }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '50px',
+                  '&:hover fieldset': {
+                    borderColor: theme.palette.primary.main,
+                  },
+                },
+              }}
             />
-          </StyledPaper>
+          </Grid>
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {categories.map((category) => (
+                <CategoryChip
+                  key={category}
+                  label={category}
+                  onClick={() => handleCategoryToggle(category)}
+                  color={
+                    selectedCategories.includes(category)
+                      ? 'primary'
+                      : 'default'
+                  }
+                  variant={
+                    selectedCategories.includes(category)
+                      ? 'filled'
+                      : 'outlined'
+                  }
+                />
+              ))}
+            </Box>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <InputLabel>Sort by</InputLabel>
+              <Select
+                value={sortOption}
+                onChange={handleSortChange}
+                label="Sort by"
+                sx={{ borderRadius: '50px' }}
+              >
+                <MenuItem value="name">Name</MenuItem>
+                <MenuItem value="date">Date</MenuItem>
+                <MenuItem value="size">Size</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
         </Grid>
-      </Grid>
-      <StyledPaper elevation={0} sx={{ mb: 4 }}>
-        <Typography variant="h6" gutterBottom sx={{ color: '#555', mb: 2 }}>
+      </StyledPaper>
+
+      <StyledPaper>
+        <Typography
+          variant="h4"
+          gutterBottom
+          sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
+        >
           Projects
         </Typography>
-        <ProjectList
-          projects={projects}
-          onProjectSelect={handleProjectSelect}
-        />
+        <ProjectList projects={projects} onProjectSelect={setSelectedProject} />
       </StyledPaper>
-      <StyledPaper elevation={0}>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: 2,
-          }}
+
+      <StyledPaper>
+        <Typography
+          variant="h4"
+          gutterBottom
+          sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
         >
-          <Typography variant="h6" sx={{ color: '#555' }}>
-            {selectedProject ? `Files in ${selectedProject.name}` : 'All Files'}
-          </Typography>
-          <FormControl variant="outlined" size="small">
-            <InputLabel id="sort-select-label">Sort by</InputLabel>
-            <Select
-              labelId="sort-select-label"
-              value={sortOption}
-              onChange={handleSortChange}
-              label="Sort by"
-            >
-              <MenuItem value="date">Date</MenuItem>
-              <MenuItem value="name">Name</MenuItem>
-              <MenuItem value="size">Size</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
-        <FileList files={sortedFiles} onDeleteFile={handleDeleteFile} />
+          All Files
+        </Typography>
+        {isLoading ? (
+          <CircularProgress />
+        ) : error ? (
+          <Alert severity="error">{error}</Alert>
+        ) : (
+          <FileList files={sortedFiles} onDeleteFile={handleDeleteFile} />
+        )}
       </StyledPaper>
-      {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
-      )}
     </Box>
   );
 };
