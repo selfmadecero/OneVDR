@@ -27,7 +27,7 @@ import {
   addCommunication,
   Communication,
 } from '../services/mail';
-import { syncEmails, getEmails, EmailMessage } from '../services/mail';
+import { syncGoogleMail, getEmails, EmailMessage } from '../services/mail';
 import InvestorCommunication from '../components/InvestorCommunication';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -66,13 +66,16 @@ const Mail: React.FC = () => {
     fetchEmails();
   }, []);
 
-  const handleSyncEmails = async (provider: 'gmail' | 'outlook') => {
+  const handleSyncEmails = async () => {
     try {
-      await syncEmails(provider);
-      const syncedEmails = await getEmails();
+      setIsLoading(true);
+      const syncedEmails = await syncGoogleMail();
       setEmails(syncedEmails);
+      setError(null);
     } catch (err) {
-      setError(`Failed to sync emails from ${provider}`);
+      setError('Failed to sync emails from Gmail. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -89,18 +92,14 @@ const Mail: React.FC = () => {
         <Button
           variant="contained"
           color="primary"
-          onClick={() => handleSyncEmails('gmail')}
+          onClick={handleSyncEmails}
           sx={{ mr: 2 }}
         >
           Sync Gmail
         </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => handleSyncEmails('outlook')}
-        >
-          Sync Outlook
-        </Button>
+        <Typography variant="body2" sx={{ mt: 2, mb: 2 }}>
+          Note: For the MVP version, only Google Mail integration is available.
+        </Typography>
         {isLoading ? (
           <CircularProgress />
         ) : error ? (

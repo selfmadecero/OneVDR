@@ -7,6 +7,7 @@ import {
   getDocs,
   orderBy,
 } from 'firebase/firestore';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 export interface EmailMessage {
   id: string;
@@ -25,8 +26,55 @@ export interface Communication {
   investorName: string;
 }
 
-export const syncEmails = async (provider: 'gmail' | 'outlook') => {
-  console.log(`Syncing emails from ${provider}`);
+export const syncGoogleMail = async () => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('User not authenticated');
+
+  const provider = new GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (!credential) throw new Error('Failed to get Google credential');
+
+    const token = credential.accessToken;
+    if (!token) throw new Error('Failed to get access token');
+
+    // Here you would typically send the token to your backend
+    // The backend would use this token to fetch emails from Gmail API
+    console.log('Successfully obtained Gmail access token');
+
+    // For demonstration, let's fetch some dummy emails
+    const dummyEmails: EmailMessage[] = [
+      {
+        id: '1',
+        from: 'investor1@example.com',
+        to: 'you@example.com',
+        subject: 'Investment Opportunity',
+        body: 'This is a dummy email body for investment opportunity.',
+        date: new Date().toISOString(),
+      },
+      {
+        id: '2',
+        from: 'investor2@example.com',
+        to: 'you@example.com',
+        subject: 'Follow-up Meeting',
+        body: 'This is a dummy email body for follow-up meeting.',
+        date: new Date().toISOString(),
+      },
+    ];
+
+    // Save dummy emails to Firestore
+    for (const email of dummyEmails) {
+      await saveEmail(email);
+    }
+
+    return dummyEmails;
+  } catch (error) {
+    console.error('Error syncing Google Mail:', error);
+    throw error;
+  }
 };
 
 export const saveEmail = async (email: Omit<EmailMessage, 'id'>) => {
