@@ -47,8 +47,8 @@ export const syncGoogleMail = async () => {
     console.log('Successfully obtained Gmail access token');
 
     const getGmailMessages = httpsCallable(functions, 'getGmailMessages');
-    const gmailResult = await getGmailMessages({ accessToken: token });
-    const emails = gmailResult.data as EmailMessage[];
+    const result = await getGmailMessages({ accessToken: token });
+    const emails = result.data as EmailMessage[];
 
     // Save emails to Firestore
     for (const email of emails) {

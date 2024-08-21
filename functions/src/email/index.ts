@@ -1,5 +1,8 @@
 import * as functions from 'firebase-functions';
 import { google } from 'googleapis';
+import * as cors from 'cors';
+
+const corsHandler = cors({ origin: true });
 
 const oauth2Client = new google.auth.OAuth2(
   functions.config().gmail.client_id,
@@ -7,46 +10,46 @@ const oauth2Client = new google.auth.OAuth2(
   functions.config().gmail.redirect_uri
 );
 
-export const getGmailMessages = functions.https.onCall(
-  async (data, context) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError(
-        'unauthenticated',
-        'User must be authenticated'
-      );
-    }
+export const getGmailMessages = functions.https.onRequest(
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (!request.headers.authorization) {
+        response.status(401).send('Unauthorized');
+        return;
+      }
 
-    const { accessToken } = data;
-    oauth2Client.setCredentials({ access_token: accessToken });
+      const { accessToken } = request.body;
+      oauth2Client.setCredentials({ access_token: accessToken });
 
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-    try {
-      const response = await gmail.users.messages.list({
-        userId: 'me',
-        maxResults: 10,
-      });
+      try {
+        const gmailResponse = await gmail.users.messages.list({
+          userId: 'me',
+          maxResults: 10,
+        });
 
-      const messages = response.data.messages || [];
-      const emailDetails = await Promise.all(
-        messages.map(async (message: any) => {
-          const details = await gmail.users.messages.get({
-            userId: 'me',
-            id: message.id!,
-          });
-          return parseEmailDetails(details.data);
-        })
-      );
+        const messages = gmailResponse.data.messages || [];
+        const emailDetails = await Promise.all(
+          messages.map(async (message: any) => {
+            const details = await gmail.users.messages.get({
+              userId: 'me',
+              id: message.id!,
+            });
+            return parseEmailDetails(details.data);
+          })
+        );
 
-      return emailDetails;
-    } catch (error) {
-      console.error('Error fetching Gmail messages:', error);
-      throw new functions.https.HttpsError(
-        'internal',
-        'Error fetching Gmail messages',
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      );
-    }
+        response.json(emailDetails);
+      } catch (error) {
+        console.error('Error fetching Gmail messages:', error);
+        response.status(500).json({
+          error: 'Internal Server Error',
+          message:
+            error instanceof Error ? error.message : 'Unknown error occurred',
+        });
+      }
+    });
   }
 );
 
