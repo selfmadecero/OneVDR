@@ -23,8 +23,6 @@ import { auth, db, storage } from '../services/firebase';
 import { FileInfo, User } from '../types';
 import FileUpload from '../components/FileUpload';
 import FileList from '../components/FileList';
-import ProjectList from '../components/ProjectList';
-import FolderView from '../components/FolderView';
 import {
   collection,
   query,
@@ -67,12 +65,6 @@ const CategoryChip = styled(Chip)(({ theme }) => ({
 
 type SortOption = 'name' | 'date' | 'size';
 
-interface Project {
-  id: string;
-  name: string;
-  category: string;
-}
-
 interface Folder {
   id: string;
   name: string;
@@ -89,11 +81,6 @@ const DataRoom: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>('date');
-  const [projects, setProjects] = useState<Project[]>([
-    { id: '1', name: 'Project A', category: 'Development' },
-    { id: '2', name: 'Project B', category: 'Marketing' },
-  ]);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentFolder, setCurrentFolder] = useState<Folder | null>(null);
 
@@ -186,16 +173,6 @@ const DataRoom: React.FC = () => {
         return 0;
     }
   });
-
-  const handleProjectSelect = (project: Project) => {
-    setSelectedProject(project);
-    // 프로젝트에 해당하는 폴더와 파일을 불러오는 로직 추가
-  };
-
-  const handleFolderSelect = (folder: Folder) => {
-    setCurrentFolder(folder);
-    // 선택된 폴더의 하위 폴더와 파일을 불러오는 로직 추가
-  };
 
   const handleFileSelect = (file: FileInfo) => {
     // 파일 선택 시 작 추가 (예: 파일 상세 정보 표시)
@@ -290,17 +267,6 @@ const DataRoom: React.FC = () => {
             </FormControl>
           </Grid>
         </Grid>
-      </StyledPaper>
-
-      <StyledPaper>
-        <Typography
-          variant="h4"
-          gutterBottom
-          sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
-        >
-          Projects
-        </Typography>
-        <ProjectList projects={projects} onProjectSelect={setSelectedProject} />
       </StyledPaper>
 
       <StyledPaper>
