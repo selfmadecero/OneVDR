@@ -8,6 +8,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 export interface EmailMessage {
   id: string;
@@ -26,6 +27,8 @@ export interface Communication {
   investorName: string;
 }
 
+const functions = getFunctions();
+
 export const syncGoogleMail = async () => {
   const user = auth.currentUser;
   if (!user) throw new Error('User not authenticated');
@@ -34,43 +37,25 @@ export const syncGoogleMail = async () => {
   provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
 
   try {
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const signInResult = await signInWithPopup(auth, provider);
+    const credential = GoogleAuthProvider.credentialFromResult(signInResult);
     if (!credential) throw new Error('Failed to get Google credential');
 
     const token = credential.accessToken;
     if (!token) throw new Error('Failed to get access token');
 
-    // Here you would typically send the token to your backend
-    // The backend would use this token to fetch emails from Gmail API
     console.log('Successfully obtained Gmail access token');
 
-    // For demonstration, let's fetch some dummy emails
-    const dummyEmails: EmailMessage[] = [
-      {
-        id: '1',
-        from: 'investor1@example.com',
-        to: 'you@example.com',
-        subject: 'Investment Opportunity',
-        body: 'This is a dummy email body for investment opportunity.',
-        date: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        from: 'investor2@example.com',
-        to: 'you@example.com',
-        subject: 'Follow-up Meeting',
-        body: 'This is a dummy email body for follow-up meeting.',
-        date: new Date().toISOString(),
-      },
-    ];
+    const getGmailMessages = httpsCallable(functions, 'getGmailMessages');
+    const gmailResult = await getGmailMessages({ accessToken: token });
+    const emails = gmailResult.data as EmailMessage[];
 
-    // Save dummy emails to Firestore
-    for (const email of dummyEmails) {
+    // Save emails to Firestore
+    for (const email of emails) {
       await saveEmail(email);
     }
 
-    return dummyEmails;
+    return emails;
   } catch (error) {
     console.error('Error syncing Google Mail:', error);
     throw error;

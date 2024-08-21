@@ -17,12 +17,15 @@ import {
   addCommunication,
   Communication,
 } from '../services/mail';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../services/firebase';
 
 const StyledChip = styled(Chip)(({ theme }) => ({
   margin: theme.spacing(0.5),
 }));
 
 const InvestorCommunication: React.FC = () => {
+  const [user, loading] = useAuthState(auth);
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [newCommunication, setNewCommunication] = useState<
     Omit<Communication, 'id' | 'date'>
@@ -34,25 +37,39 @@ const InvestorCommunication: React.FC = () => {
 
   useEffect(() => {
     const fetchCommunications = async () => {
-      try {
-        const history = await getCommunicationHistory();
-        setCommunications(history);
-      } catch (error) {
-        console.error('Failed to fetch communication history:', error);
+      if (user) {
+        try {
+          const history = await getCommunicationHistory();
+          setCommunications(history);
+        } catch (error) {
+          console.error('Failed to fetch communication history:', error);
+        }
       }
     };
-    fetchCommunications();
-  }, []);
+    if (!loading) {
+      fetchCommunications();
+    }
+  }, [user, loading]);
 
   const handleAddCommunication = async () => {
-    try {
-      const addedCommunication = await addCommunication(newCommunication);
-      setCommunications([addedCommunication, ...communications]);
-      setNewCommunication({ type: 'email', content: '', investorName: '' });
-    } catch (error) {
-      console.error('Failed to add communication:', error);
+    if (user) {
+      try {
+        const addedCommunication = await addCommunication(newCommunication);
+        setCommunications([addedCommunication, ...communications]);
+        setNewCommunication({ type: 'email', content: '', investorName: '' });
+      } catch (error) {
+        console.error('Failed to add communication:', error);
+      }
     }
   };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return <div>Please sign in to view and add communications.</div>;
+  }
 
   return (
     <Box>
@@ -117,22 +134,28 @@ const InvestorCommunication: React.FC = () => {
             <ListItem alignItems="flex-start">
               <ListItemText
                 primary={
-                  <Typography>
+                  <Typography variant="subtitle1" component="div">
                     {comm.investorName} -{' '}
                     {new Date(comm.date).toLocaleDateString()}
                   </Typography>
                 }
                 secondary={
-                  <React.Fragment>
-                    <StyledChip label={comm.type} size="small" />
+                  <>
                     <Typography
-                      component="span"
+                      component="div"
+                      variant="body2"
+                      color="text.secondary"
+                    >
+                      <StyledChip label={comm.type} size="small" />
+                    </Typography>
+                    <Typography
+                      component="div"
                       variant="body2"
                       color="text.primary"
                     >
                       {comm.content}
                     </Typography>
-                  </React.Fragment>
+                  </>
                 }
               />
             </ListItem>
