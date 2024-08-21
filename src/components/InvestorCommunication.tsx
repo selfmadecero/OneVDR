@@ -15,15 +15,8 @@ import { styled } from '@mui/material/styles';
 import {
   getCommunicationHistory,
   addCommunication,
-} from '../services/communication';
-
-interface Communication {
-  id: string;
-  type: 'email' | 'phone' | 'meeting';
-  date: string;
-  content: string;
-  investorName: string;
-}
+  Communication,
+} from '../services/mail';
 
 const StyledChip = styled(Chip)(({ theme }) => ({
   margin: theme.spacing(0.5),
@@ -41,60 +34,32 @@ const InvestorCommunication: React.FC = () => {
 
   useEffect(() => {
     const fetchCommunications = async () => {
-      const history = await getCommunicationHistory();
-      setCommunications(history);
+      try {
+        const history = await getCommunicationHistory();
+        setCommunications(history);
+      } catch (error) {
+        console.error('Failed to fetch communication history:', error);
+      }
     };
     fetchCommunications();
   }, []);
 
   const handleAddCommunication = async () => {
-    if (newCommunication.content && newCommunication.investorName) {
+    try {
       const addedCommunication = await addCommunication(newCommunication);
-      setCommunications([...communications, addedCommunication]);
+      setCommunications([addedCommunication, ...communications]);
       setNewCommunication({ type: 'email', content: '', investorName: '' });
+    } catch (error) {
+      console.error('Failed to add communication:', error);
     }
   };
 
   return (
     <Box>
       <Typography variant="h5" gutterBottom>
-        Investor Communication Timeline
+        Investor Communication
       </Typography>
-      <List>
-        {communications.map((comm, index) => (
-          <React.Fragment key={comm.id}>
-            <ListItem alignItems="flex-start">
-              <ListItemText
-                primary={
-                  <Typography>
-                    {comm.investorName} -{' '}
-                    {new Date(comm.date).toLocaleDateString()}
-                  </Typography>
-                }
-                secondary={
-                  <React.Fragment>
-                    <StyledChip label={comm.type} size="small" />
-                    <Typography
-                      component="span"
-                      variant="body2"
-                      color="text.primary"
-                    >
-                      {comm.content}
-                    </Typography>
-                  </React.Fragment>
-                }
-              />
-            </ListItem>
-            {index < communications.length - 1 && (
-              <Divider variant="inset" component="li" />
-            )}
-          </React.Fragment>
-        ))}
-      </List>
-      <Box mt={3}>
-        <Typography variant="h6" gutterBottom>
-          Add New Communication
-        </Typography>
+      <Box mb={2}>
         <TextField
           select
           label="Type"
@@ -146,6 +111,35 @@ const InvestorCommunication: React.FC = () => {
           Add Communication
         </Button>
       </Box>
+      <List>
+        {communications.map((comm) => (
+          <React.Fragment key={comm.id}>
+            <ListItem alignItems="flex-start">
+              <ListItemText
+                primary={
+                  <Typography>
+                    {comm.investorName} -{' '}
+                    {new Date(comm.date).toLocaleDateString()}
+                  </Typography>
+                }
+                secondary={
+                  <React.Fragment>
+                    <StyledChip label={comm.type} size="small" />
+                    <Typography
+                      component="span"
+                      variant="body2"
+                      color="text.primary"
+                    >
+                      {comm.content}
+                    </Typography>
+                  </React.Fragment>
+                }
+              />
+            </ListItem>
+            <Divider variant="inset" component="li" />
+          </React.Fragment>
+        ))}
+      </List>
     </Box>
   );
 };

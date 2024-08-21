@@ -11,11 +11,24 @@ import {
   Button,
   CircularProgress,
   Alert,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  MenuItem,
 } from '@mui/material';
 import { styled, useTheme } from '@mui/material/styles';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../services/firebase';
 import { User } from '../types';
+import {
+  getCommunicationHistory,
+  addCommunication,
+  Communication,
+} from '../services/mail';
+import { syncEmails, getEmails, EmailMessage } from '../services/mail';
+import InvestorCommunication from '../components/InvestorCommunication';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -31,55 +44,36 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   },
 }));
 
-interface Email {
-  id: string;
-  subject: string;
-  sender: string;
-  date: string;
-  content: string;
-}
-
 const Mail: React.FC = () => {
   const theme = useTheme();
   const [user] = useAuthState(auth);
-  const [emails, setEmails] = useState<Email[]>([]);
+  const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newEmail, setNewEmail] = useState({
-    to: '',
-    subject: '',
-    content: '',
-  });
 
   useEffect(() => {
-    // Fetch emails from the server
-    // This is a placeholder. You should implement the actual fetching logic.
-    setIsLoading(true);
-    setTimeout(() => {
-      setEmails([
-        {
-          id: '1',
-          subject: 'Welcome',
-          sender: 'admin@onevdr.com',
-          date: '2023-05-01',
-          content: 'Welcome to OneVDR!',
-        },
-        {
-          id: '2',
-          subject: 'Investor Meeting',
-          sender: 'investor@example.com',
-          date: '2023-05-02',
-          content: "Let's schedule a meeting.",
-        },
-      ]);
-      setIsLoading(false);
-    }, 1000);
+    const fetchEmails = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedEmails = await getEmails();
+        setEmails(fetchedEmails);
+      } catch (err) {
+        setError('Failed to fetch emails');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchEmails();
   }, []);
 
-  const handleSendEmail = () => {
-    // Send email logic here
-    console.log('Sending email:', newEmail);
-    setNewEmail({ to: '', subject: '', content: '' });
+  const handleSyncEmails = async (provider: 'gmail' | 'outlook') => {
+    try {
+      await syncEmails(provider);
+      const syncedEmails = await getEmails();
+      setEmails(syncedEmails);
+    } catch (err) {
+      setError(`Failed to sync emails from ${provider}`);
+    }
   };
 
   return (
@@ -90,8 +84,23 @@ const Mail: React.FC = () => {
           gutterBottom
           sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
         >
-          Mail
+          Email Inbox
         </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => handleSyncEmails('gmail')}
+          sx={{ mr: 2 }}
+        >
+          Sync Gmail
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => handleSyncEmails('outlook')}
+        >
+          Sync Outlook
+        </Button>
         {isLoading ? (
           <CircularProgress />
         ) : error ? (
@@ -99,64 +108,19 @@ const Mail: React.FC = () => {
         ) : (
           <List>
             {emails.map((email) => (
-              <React.Fragment key={email.id}>
-                <ListItem>
-                  <ListItemText
-                    primary={email.subject}
-                    secondary={`From: ${email.sender} | Date: ${email.date}`}
-                  />
-                </ListItem>
-                <Divider />
-              </React.Fragment>
+              <ListItem key={email.id}>
+                <ListItemText
+                  primary={email.subject}
+                  secondary={`From: ${email.from} | Date: ${new Date(
+                    email.date
+                  ).toLocaleString()}`}
+                />
+              </ListItem>
             ))}
           </List>
         )}
       </StyledPaper>
-
-      <StyledPaper>
-        <Typography
-          variant="h5"
-          gutterBottom
-          sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
-        >
-          Compose Email
-        </Typography>
-        <TextField
-          fullWidth
-          label="To"
-          value={newEmail.to}
-          onChange={(e) => setNewEmail({ ...newEmail, to: e.target.value })}
-          margin="normal"
-        />
-        <TextField
-          fullWidth
-          label="Subject"
-          value={newEmail.subject}
-          onChange={(e) =>
-            setNewEmail({ ...newEmail, subject: e.target.value })
-          }
-          margin="normal"
-        />
-        <TextField
-          fullWidth
-          label="Content"
-          value={newEmail.content}
-          onChange={(e) =>
-            setNewEmail({ ...newEmail, content: e.target.value })
-          }
-          margin="normal"
-          multiline
-          rows={4}
-        />
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleSendEmail}
-          sx={{ mt: 2 }}
-        >
-          Send Email
-        </Button>
-      </StyledPaper>
+      <InvestorCommunication />
     </Box>
   );
 };
