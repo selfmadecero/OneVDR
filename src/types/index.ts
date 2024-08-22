@@ -30,3 +30,27 @@ export interface AnalysisResult {
   targetAudience: string;
   potentialApplications: string[];
 }
+
+export interface DataRoomStats {
+  lastAccessed: string;
+  documentsViewed: number;
+  timeSpent: number;
+}
+
+export interface ActivityLog {
+  timestamp: string;
+  action: string;
+  fileId: string;
+}
+
+export interface Investor {
+  id: string;
+  name: string;
+  company: string;
+  email: string;
+  currentStep: number;
+  status: 'active' | 'paused' | 'closed';
+  investmentAmount: number;
+  lastContact: string;
+  notes: string;
+}

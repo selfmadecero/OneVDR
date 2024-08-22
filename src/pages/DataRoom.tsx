@@ -16,11 +16,14 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { styled, useTheme } from '@mui/material/styles';
 import { auth, db, storage } from '../services/firebase';
-import { FileInfo, User } from '../types';
+import { FileInfo, User, DataRoomStats, ActivityLog } from '../types';
 import FileUpload from '../components/FileUpload';
 import FileList from '../components/FileList';
 import {
@@ -29,9 +32,13 @@ import {
   onSnapshot,
   deleteDoc,
   doc,
+  addDoc,
+  getDoc,
 } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { SelectChangeEvent } from '@mui/material/Select';
+import { useNavigate } from 'react-router-dom';
+import { getDocs, QueryDocumentSnapshot } from 'firebase/firestore';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -84,6 +91,11 @@ const DataRoom: React.FC = () => {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentFolder, setCurrentFolder] = useState<Folder | null>(null);
 
+  const [investorId, setInvestorId] = useState<string | null>(null);
+  const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
+
+  const navigate = useNavigate();
+
   useEffect(() => {
     if (user) {
       const filesRef = collection(db, 'users', user.uid, 'files');
@@ -107,6 +119,43 @@ const DataRoom: React.FC = () => {
       return unsubscribe;
     }
   }, [user]);
+
+  useEffect(() => {
+    // URL에서 investorId를 가져옵니다.
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('investorId');
+    setInvestorId(id);
+
+    if (id) {
+      // 투자사의 활동 로그를 가져옵니다.
+      fetchActivityLog(id).then(setActivityLog);
+    }
+  }, []);
+
+  const fetchActivityLog = async (
+    investorId: string
+  ): Promise<ActivityLog[]> => {
+    const logsRef = collection(db, 'activityLogs', investorId, 'logs');
+    const logsSnapshot = await getDocs(logsRef);
+    return logsSnapshot.docs.map(
+      (doc: QueryDocumentSnapshot) => doc.data() as ActivityLog
+    );
+  };
+
+  const logActivity = async (action: string, fileId: string) => {
+    if (investorId) {
+      const newActivity = {
+        timestamp: new Date().toISOString(),
+        action,
+        fileId,
+      };
+      await addDoc(
+        collection(db, 'activityLogs', investorId, 'logs'),
+        newActivity
+      );
+      setActivityLog([...activityLog, newActivity]);
+    }
+  };
 
   const handleCategoryToggle = (category: string) => {
     setSelectedCategories((prev) =>
@@ -175,7 +224,8 @@ const DataRoom: React.FC = () => {
   });
 
   const handleFileSelect = (file: FileInfo) => {
-    // 파일 선택 시 작 추가 (예: 파일 상세 정보 표시)
+    logActivity('viewed', file.id);
+    // 파일 선택 시 추가 작업
   };
 
   return (
@@ -282,9 +332,29 @@ const DataRoom: React.FC = () => {
         ) : error ? (
           <Alert severity="error">{error}</Alert>
         ) : (
-          <FileList files={sortedFiles} onDeleteFile={handleDeleteFile} />
+          <FileList
+            files={sortedFiles}
+            onDeleteFile={handleDeleteFile}
+            onSelectFile={handleFileSelect}
+          />
         )}
       </StyledPaper>
+
+      {investorId && (
+        <StyledPaper>
+          <Typography variant="h6">Activity Log</Typography>
+          <List>
+            {activityLog.map((activity, index) => (
+              <ListItem key={index}>
+                <ListItemText
+                  primary={`${activity.action} file ${activity.fileId}`}
+                  secondary={new Date(activity.timestamp).toLocaleString()}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </StyledPaper>
+      )}
     </Box>
   );
 };

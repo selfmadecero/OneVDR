@@ -20,6 +20,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  InputAdornment,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -32,8 +33,11 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  getDoc,
 } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 import Confetti from 'react-confetti';
+import { DataRoomStats } from '../types';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -122,6 +126,7 @@ const InvestmentPipeline: React.FC = () => {
     [key: string]: boolean;
   }>({});
   const [showConfetti, setShowConfetti] = useState(false);
+  const navigate = useNavigate();
 
   const toggleCardExpansion = (investorId: string) => {
     setExpandedCards((prev) => ({
@@ -261,11 +266,37 @@ const InvestmentPipeline: React.FC = () => {
     return 0;
   });
 
+  const fetchDataRoomStats = async (
+    investorId: string
+  ): Promise<DataRoomStats> => {
+    // 여기에 Firebase 또는 API 호출을 통해 데이터룸 통계를 가져오는 로직을 구현합니다.
+    // 예시 코드:
+    const statsRef = doc(db, 'dataRoomStats', investorId);
+    const statsDoc = await getDoc(statsRef);
+    return statsDoc.data() as DataRoomStats;
+  };
+
+  const navigateToDataRoom = (investorId: string) => {
+    // 데이터룸 페이지로 이동하는 로직을 구현합니다.
+    // 예시 코드:
+    navigate(`/data-room/${investorId}`);
+  };
+
   const InvestorCard: React.FC<{
     investor: Investor;
     expanded: boolean;
     onToggleExpand: () => void;
   }> = ({ investor, expanded, onToggleExpand }) => {
+    const [dataRoomStats, setDataRoomStats] = useState<DataRoomStats | null>(
+      null
+    );
+
+    useEffect(() => {
+      if (expanded) {
+        fetchDataRoomStats(investor.id).then(setDataRoomStats);
+      }
+    }, [expanded, investor.id]);
+
     return (
       <ArcCard>
         <Grid container spacing={2} alignItems="center">
@@ -385,6 +416,39 @@ const InvestmentPipeline: React.FC = () => {
                   >
                     {investor.status === 'active' ? 'Pause' : 'Activate'}
                   </Button>
+                </Box>
+                <Box
+                  sx={{
+                    mt: 2,
+                    p: 2,
+                    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+                    borderRadius: '16px',
+                  }}
+                >
+                  <Typography variant="h6">Data Room Activity</Typography>
+                  {dataRoomStats ? (
+                    <>
+                      <Typography>
+                        Last accessed: {dataRoomStats.lastAccessed}
+                      </Typography>
+                      <Typography>
+                        Documents viewed: {dataRoomStats.documentsViewed}
+                      </Typography>
+                      <Typography>
+                        Time spent: {dataRoomStats.timeSpent} minutes
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => navigateToDataRoom(investor.id)}
+                        sx={{ mt: 1 }}
+                      >
+                        View Data Room
+                      </Button>
+                    </>
+                  ) : (
+                    <Typography>Loading data room statistics...</Typography>
+                  )}
                 </Box>
               </Box>
             </Grid>
@@ -546,11 +610,20 @@ const InvestmentPipeline: React.FC = () => {
         <Dialog
           open={!!editingInvestor}
           onClose={() => setEditingInvestor(null)}
+          PaperProps={{
+            style: {
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
+            },
+          }}
         >
-          <DialogTitle>Edit Investor</DialogTitle>
+          <DialogTitle sx={{ fontWeight: 'bold', color: '#2196F3' }}>
+            Edit Investor
+          </DialogTitle>
           <DialogContent>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Investor Name"
@@ -561,9 +634,10 @@ const InvestmentPipeline: React.FC = () => {
                       name: e.target.value,
                     })
                   }
+                  sx={{ mt: 2 }}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Company"
@@ -574,9 +648,10 @@ const InvestmentPipeline: React.FC = () => {
                       company: e.target.value,
                     })
                   }
+                  sx={{ mt: 2 }}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Email"
@@ -589,7 +664,7 @@ const InvestmentPipeline: React.FC = () => {
                   }
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Investment Amount"
@@ -601,9 +676,14 @@ const InvestmentPipeline: React.FC = () => {
                       investmentAmount: parseFloat(e.target.value) || 0,
                     })
                   }
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">$</InputAdornment>
+                    ),
+                  }}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Last Contact"
@@ -625,7 +705,7 @@ const InvestmentPipeline: React.FC = () => {
                   fullWidth
                   label="Notes"
                   multiline
-                  rows={3}
+                  rows={4}
                   value={editingInvestor.notes}
                   onChange={(e) =>
                     setEditingInvestor({
@@ -637,9 +717,25 @@ const InvestmentPipeline: React.FC = () => {
               </Grid>
             </Grid>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEditingInvestor(null)}>Cancel</Button>
-            <Button onClick={() => handleEditInvestor(editingInvestor)}>
+          <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 3 }}>
+            <Button
+              onClick={() => setEditingInvestor(null)}
+              sx={{
+                color: '#9e9e9e',
+                '&:hover': { backgroundColor: 'rgba(158, 158, 158, 0.1)' },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => handleEditInvestor(editingInvestor)}
+              variant="contained"
+              sx={{
+                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                color: 'white',
+                boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+              }}
+            >
               Save
             </Button>
           </DialogActions>

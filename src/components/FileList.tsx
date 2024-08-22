@@ -17,10 +17,15 @@ import FileShare from './FileShare';
 
 interface FileListProps {
   files: FileInfo[];
-  onDeleteFile: (fileId: string) => void;
+  onDeleteFile: (fileId: string) => Promise<void>;
+  onSelectFile: (file: FileInfo) => void;
 }
 
-const FileList: React.FC<FileListProps> = ({ files, onDeleteFile }) => {
+const FileList: React.FC<FileListProps> = ({
+  files,
+  onDeleteFile,
+  onSelectFile,
+}) => {
   const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -29,6 +34,7 @@ const FileList: React.FC<FileListProps> = ({ files, onDeleteFile }) => {
   const handleFileClick = (file: FileInfo) => {
     setSelectedFile(file);
     setDialogOpen(true);
+    onSelectFile(file);
   };
 
   const handleCloseDialog = () => {
