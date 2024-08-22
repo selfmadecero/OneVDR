@@ -94,6 +94,16 @@ const InvestmentPipeline: React.FC = () => {
   const [sortBy, setSortBy] = useState<'name' | 'company' | 'investmentAmount'>(
     'name'
   );
+  const [expandedCards, setExpandedCards] = useState<{
+    [key: string]: boolean;
+  }>({});
+
+  const toggleCardExpansion = (investorId: string) => {
+    setExpandedCards((prev) => ({
+      ...prev,
+      [investorId]: !prev[investorId],
+    }));
+  };
 
   useEffect(() => {
     if (user) {
@@ -148,13 +158,7 @@ const InvestmentPipeline: React.FC = () => {
       const investorRef = doc(db, 'users', user.uid, 'investors', investorId);
       try {
         await updateDoc(investorRef, { currentStep: newStep });
-        setInvestors((prevInvestors) =>
-          prevInvestors.map((investor) =>
-            investor.id === investorId
-              ? { ...investor, currentStep: newStep }
-              : investor
-          )
-        );
+        // 로컬 상태 업데이트는 제거합니다.
       } catch (error) {
         console.error('Error updating investor step:', error);
         setError('Failed to update investor step. Please try again.');
@@ -168,7 +172,13 @@ const InvestmentPipeline: React.FC = () => {
   ) => {
     if (user) {
       const investorRef = doc(db, 'users', user.uid, 'investors', investorId);
-      await updateDoc(investorRef, { status: newStatus });
+      try {
+        await updateDoc(investorRef, { status: newStatus });
+        // 로컬 상태 업데이트는 제거합니다.
+      } catch (error) {
+        console.error('Error updating investor status:', error);
+        setError('Failed to update investor status. Please try again.');
+      }
     }
   };
 
@@ -224,14 +234,11 @@ const InvestmentPipeline: React.FC = () => {
     return 0;
   });
 
-  const InvestorCard: React.FC<{ investor: Investor }> = ({ investor }) => {
-    const [expanded, setExpanded] = useState(false);
-
-    const toggleExpand = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setExpanded(!expanded);
-    };
-
+  const InvestorCard: React.FC<{
+    investor: Investor;
+    expanded: boolean;
+    onToggleExpand: () => void;
+  }> = ({ investor, expanded, onToggleExpand }) => {
     return (
       <StyledPaper>
         <Grid container spacing={2} alignItems="center">
@@ -256,7 +263,7 @@ const InvestmentPipeline: React.FC = () => {
             />
           </Grid>
           <Grid item xs={12} sm={4}>
-            <Button onClick={toggleExpand}>
+            <Button onClick={onToggleExpand}>
               {expanded ? 'Hide Details' : 'Show Details'}
             </Button>
             <Button onClick={() => setEditingInvestor(investor)}>Edit</Button>
@@ -285,26 +292,24 @@ const InvestmentPipeline: React.FC = () => {
               </Stepper>
               <Button
                 variant="outlined"
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() =>
                   handleUpdateInvestorStep(
                     investor.id,
                     Math.min(investor.currentStep + 1, steps.length - 1)
-                  );
-                }}
+                  )
+                }
                 disabled={investor.currentStep === steps.length - 1}
               >
                 Next Step
               </Button>
               <Button
                 variant="outlined"
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() =>
                   handleUpdateInvestorStatus(
                     investor.id,
                     investor.status === 'active' ? 'paused' : 'active'
-                  );
-                }}
+                  )
+                }
               >
                 {investor.status === 'active' ? 'Pause' : 'Activate'}
               </Button>
@@ -449,7 +454,12 @@ const InvestmentPipeline: React.FC = () => {
       </StyledPaper>
 
       {sortedInvestors.map((investor) => (
-        <InvestorCard key={investor.id} investor={investor} />
+        <InvestorCard
+          key={investor.id}
+          investor={investor}
+          expanded={expandedCards[investor.id] || false}
+          onToggleExpand={() => toggleCardExpansion(investor.id)}
+        />
       ))}
 
       {editingInvestor && (
