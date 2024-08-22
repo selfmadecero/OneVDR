@@ -27,8 +27,6 @@ export interface Communication {
   investorName: string;
 }
 
-const functions = getFunctions();
-
 export const syncGoogleMail = async () => {
   const user = auth.currentUser;
   if (!user) throw new Error('User not authenticated');
@@ -46,9 +44,13 @@ export const syncGoogleMail = async () => {
 
     console.log('Successfully obtained Gmail access token');
 
-    const getGmailMessages = httpsCallable(functions, 'getGmailMessages');
+    const functions = getFunctions();
+    const getGmailMessages = httpsCallable<
+      { accessToken: string },
+      EmailMessage[]
+    >(functions, 'getGmailMessages');
     const result = await getGmailMessages({ accessToken: token });
-    const emails = result.data as EmailMessage[];
+    const emails = result.data;
 
     // Save emails to Firestore
     for (const email of emails) {

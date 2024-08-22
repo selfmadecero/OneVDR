@@ -1,4 +1,4 @@
-import { Description, Mail as MailIcon } from '@mui/icons-material';
+import { Description, Mail as MailIcon, TrendingUp } from '@mui/icons-material';
 import {
   Drawer,
   List,
@@ -73,6 +73,31 @@ const Sidebar: React.FC = () => {
             primaryTypographyProps={{
               fontWeight: isActive('/mail') ? 'bold' : 'medium',
               color: isActive('/mail') ? '#2196f3' : 'inherit',
+            }}
+          />
+        </ListItem>
+        <ListItem
+          button
+          onClick={() => navigate('/investment-pipeline')}
+          sx={{
+            backgroundColor: isActive('/investment-pipeline')
+              ? 'rgba(33, 150, 243, 0.1)'
+              : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(33, 150, 243, 0.1)' },
+          }}
+        >
+          <ListItemIcon>
+            <TrendingUp
+              sx={{
+                color: isActive('/investment-pipeline') ? '#2196f3' : 'inherit',
+              }}
+            />
+          </ListItemIcon>
+          <ListItemText
+            primary="Investment Pipeline"
+            primaryTypographyProps={{
+              fontWeight: isActive('/investment-pipeline') ? 'bold' : 'medium',
+              color: isActive('/investment-pipeline') ? '#2196f3' : 'inherit',
             }}
           />
         </ListItem>

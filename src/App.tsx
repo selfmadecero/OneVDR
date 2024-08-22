@@ -17,6 +17,7 @@ import Sidebar from './components/Sidebar';
 import { Box } from '@mui/material';
 import { getAuth, getRedirectResult } from 'firebase/auth';
 import NotFound from './components/NotFound';
+import InvestmentPipeline from './pages/InvestmentPipeline';
 
 const theme = createTheme({
   palette: {
@@ -67,6 +68,7 @@ const AppContent: React.FC = () => {
           <Route path="/auth" element={<Auth />} />
           <Route path="/dataroom" element={<DataRoom />} />
           <Route path="/mail" element={<Mail />} />
+          <Route path="/investment-pipeline" element={<InvestmentPipeline />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Box>

@@ -142,14 +142,14 @@ const InvestorCommunication: React.FC = () => {
                 secondary={
                   <>
                     <Typography
-                      component="div"
+                      component="span"
                       variant="body2"
                       color="text.secondary"
                     >
                       <StyledChip label={comm.type} size="small" />
                     </Typography>
                     <Typography
-                      component="div"
+                      component="span"
                       variant="body2"
                       color="text.primary"
                     >

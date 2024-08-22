@@ -73,6 +73,7 @@ const Mail: React.FC = () => {
       setEmails(syncedEmails);
       setError(null);
     } catch (err) {
+      console.error('Error syncing emails:', err);
       setError('Failed to sync emails from Gmail. Please try again.');
     } finally {
       setIsLoading(false);

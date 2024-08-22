@@ -2,7 +2,7 @@ import * as functions from 'firebase-functions';
 import { google } from 'googleapis';
 import * as cors from 'cors';
 
-const corsHandler = cors({ origin: true });
+const corsHandler = cors({ origin: true, credentials: true });
 
 const oauth2Client = new google.auth.OAuth2(
   functions.config().gmail.client_id,
