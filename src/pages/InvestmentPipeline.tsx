@@ -33,6 +33,7 @@ import {
   deleteDoc,
   doc,
 } from 'firebase/firestore';
+import Confetti from 'react-confetti';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -97,6 +98,7 @@ const InvestmentPipeline: React.FC = () => {
   const [expandedCards, setExpandedCards] = useState<{
     [key: string]: boolean;
   }>({});
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const toggleCardExpansion = (investorId: string) => {
     setExpandedCards((prev) => ({
@@ -158,7 +160,10 @@ const InvestmentPipeline: React.FC = () => {
       const investorRef = doc(db, 'users', user.uid, 'investors', investorId);
       try {
         await updateDoc(investorRef, { currentStep: newStep });
-        // 로컬 상태 업데이트는 제거합니다.
+        if (newStep === steps.length - 1) {
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 5000);
+        }
       } catch (error) {
         console.error('Error updating investor step:', error);
         setError('Failed to update investor step. Please try again.');
@@ -292,12 +297,14 @@ const InvestmentPipeline: React.FC = () => {
               </Stepper>
               <Button
                 variant="outlined"
-                onClick={() =>
-                  handleUpdateInvestorStep(
-                    investor.id,
-                    Math.min(investor.currentStep + 1, steps.length - 1)
-                  )
-                }
+                onClick={() => {
+                  if (investor.currentStep < steps.length - 1) {
+                    handleUpdateInvestorStep(
+                      investor.id,
+                      investor.currentStep + 1
+                    );
+                  }
+                }}
                 disabled={investor.currentStep === steps.length - 1}
               >
                 Next Step
@@ -589,6 +596,8 @@ const InvestmentPipeline: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {showConfetti && <Confetti />}
     </Box>
   );
 };
