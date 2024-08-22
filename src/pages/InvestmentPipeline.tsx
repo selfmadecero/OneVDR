@@ -21,6 +21,9 @@ import {
   Select,
   MenuItem,
   InputAdornment,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -34,10 +37,11 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  arrayUnion,
 } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import Confetti from 'react-confetti';
-import { DataRoomStats } from '../types';
+import { DataRoomStats, Investor } from '../types';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -85,18 +89,6 @@ const steps = [
   'Closing',
 ];
 
-interface Investor {
-  id: string;
-  name: string;
-  company: string;
-  email: string;
-  currentStep: number;
-  status: 'active' | 'paused' | 'closed';
-  investmentAmount?: number;
-  lastContact?: string;
-  notes?: string;
-}
-
 const InvestmentPipeline: React.FC = () => {
   const [user] = useAuthState(auth);
   const [investors, setInvestors] = useState<Investor[]>([]);
@@ -109,6 +101,7 @@ const InvestmentPipeline: React.FC = () => {
     investmentAmount: 0,
     lastContact: '',
     notes: '',
+    comments: [],
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -171,6 +164,7 @@ const InvestmentPipeline: React.FC = () => {
           investmentAmount: 0,
           lastContact: '',
           notes: '',
+          comments: [],
         });
       } catch (error) {
         console.error('Error adding investor:', error);
@@ -254,6 +248,35 @@ const InvestmentPipeline: React.FC = () => {
     }
   };
 
+  const handleAddComment = async (investorId: string, commentText: string) => {
+    if (user) {
+      const investorRef = doc(db, 'users', user.uid, 'investors', investorId);
+      try {
+        const newComment = {
+          id: Date.now().toString(),
+          text: commentText,
+          date: new Date().toISOString(),
+        };
+        await updateDoc(investorRef, {
+          comments: arrayUnion(newComment),
+        });
+        setInvestors((prevInvestors) =>
+          prevInvestors.map((investor) =>
+            investor.id === investorId
+              ? {
+                  ...investor,
+                  comments: [...(investor.comments || []), newComment],
+                }
+              : investor
+          )
+        );
+      } catch (error) {
+        console.error('Error adding comment:', error);
+        setError('Failed to add comment. Please try again.');
+      }
+    }
+  };
+
   const filteredInvestors = investors.filter((investor) =>
     filterStatus === 'all' ? true : investor.status === filterStatus
   );
@@ -286,10 +309,22 @@ const InvestmentPipeline: React.FC = () => {
     investor: Investor;
     expanded: boolean;
     onToggleExpand: () => void;
-  }> = ({ investor, expanded, onToggleExpand }) => {
+    handleAddComment: (
+      investorId: string,
+      commentText: string
+    ) => Promise<void>;
+  }> = ({ investor, expanded, onToggleExpand, handleAddComment }) => {
     const [dataRoomStats, setDataRoomStats] = useState<DataRoomStats | null>(
       null
     );
+    const [newComment, setNewComment] = useState('');
+
+    const handleCommentSubmit = () => {
+      if (newComment.trim()) {
+        handleAddComment(investor.id, newComment.trim());
+        setNewComment('');
+      }
+    };
 
     useEffect(() => {
       if (expanded) {
@@ -450,6 +485,37 @@ const InvestmentPipeline: React.FC = () => {
                     <Typography>Loading data room statistics...</Typography>
                   )}
                 </Box>
+                <Box mt={2}>
+                  <Typography variant="h6">Comments</Typography>
+                  <List>
+                    {investor.comments?.map((comment, index) => (
+                      <ListItem key={`${comment.id}-${index}`}>
+                        <ListItemText
+                          primary={comment.text}
+                          secondary={new Date(comment.date).toLocaleString()}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                  <Box display="flex" mt={1}>
+                    <TextField
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Add a comment..."
+                    />
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleCommentSubmit}
+                      sx={{ ml: 1 }}
+                    >
+                      Add
+                    </Button>
+                  </Box>
+                </Box>
               </Box>
             </Grid>
           )}
@@ -603,6 +669,7 @@ const InvestmentPipeline: React.FC = () => {
           investor={investor}
           expanded={expandedCards[investor.id] || false}
           onToggleExpand={() => toggleCardExpansion(investor.id)}
+          handleAddComment={handleAddComment}
         />
       ))}
 

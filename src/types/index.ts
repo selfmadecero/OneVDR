@@ -53,4 +53,5 @@ export interface Investor {
   investmentAmount: number;
   lastContact: string;
   notes: string;
+  comments: { id: string; text: string; date: string }[];
 }
