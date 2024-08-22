@@ -38,7 +38,7 @@ import Confetti from 'react-confetti';
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
   marginBottom: theme.spacing(3),
-  borderRadius: theme.spacing(2),
+  borderRadius: theme.spacing(3),
   boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
   backdropFilter: 'blur(10px)',
   backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -46,6 +46,29 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   '&:hover': {
     transform: 'translateY(-5px)',
     boxShadow: '0 15px 40px rgba(0, 0, 0, 0.15)',
+  },
+}));
+
+const GradientButton = styled(Button)(({ theme }) => ({
+  background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+  border: 0,
+  borderRadius: theme.spacing(3),
+  boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+  color: 'white',
+  height: 48,
+  padding: '0 30px',
+}));
+
+const ArcCard = styled(Box)(({ theme }) => ({
+  background: 'rgba(255, 255, 255, 0.8)',
+  borderRadius: theme.spacing(3),
+  padding: theme.spacing(3),
+  boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+  backdropFilter: 'blur(4px)',
+  border: '1px solid rgba(255, 255, 255, 0.18)',
+  transition: 'all 0.3s ease-in-out',
+  '&:hover': {
+    transform: 'scale(1.02)',
   },
 }));
 
@@ -179,7 +202,6 @@ const InvestmentPipeline: React.FC = () => {
       const investorRef = doc(db, 'users', user.uid, 'investors', investorId);
       try {
         await updateDoc(investorRef, { status: newStatus });
-        // 로컬 상태 업데이트는 제거합니다.
       } catch (error) {
         console.error('Error updating investor status:', error);
         setError('Failed to update investor status. Please try again.');
@@ -245,16 +267,22 @@ const InvestmentPipeline: React.FC = () => {
     onToggleExpand: () => void;
   }> = ({ investor, expanded, onToggleExpand }) => {
     return (
-      <StyledPaper>
+      <ArcCard>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={4}>
-            <Typography variant="h6">{investor.name}</Typography>
-            <Typography variant="body2">{investor.company}</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+              {investor.name}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {investor.company}
+            </Typography>
           </Grid>
           <Grid item xs={12} sm={4}>
             <Typography variant="body2">
-              Investment Amount: $
-              {investor.investmentAmount?.toLocaleString() || 'N/A'}
+              Investment Amount:{' '}
+              <span style={{ fontWeight: 'bold' }}>
+                ${investor.investmentAmount?.toLocaleString() || 'N/A'}
+              </span>
             </Typography>
             <Chip
               label={investor.status}
@@ -265,82 +293,125 @@ const InvestmentPipeline: React.FC = () => {
                   ? 'warning'
                   : 'error'
               }
+              sx={{ borderRadius: '16px', mt: 1 }}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
-            <Button onClick={onToggleExpand}>
+            <GradientButton onClick={onToggleExpand}>
               {expanded ? 'Hide Details' : 'Show Details'}
+            </GradientButton>
+            <Button onClick={() => setEditingInvestor(investor)} sx={{ ml: 1 }}>
+              Edit
             </Button>
-            <Button onClick={() => setEditingInvestor(investor)}>Edit</Button>
             <Button
               color="error"
               onClick={() => setDeleteConfirmation(investor.id)}
+              sx={{ ml: 1 }}
             >
               Delete
             </Button>
           </Grid>
           {expanded && (
             <Grid item xs={12}>
-              <Typography variant="body2">Email: {investor.email}</Typography>
-              <Typography variant="body2">
-                Last Contact: {investor.lastContact || 'N/A'}
-              </Typography>
-              <Typography variant="body2">
-                Notes: {investor.notes || 'N/A'}
-              </Typography>
-              <Stepper activeStep={investor.currentStep || 0} alternativeLabel>
-                {steps.map((label) => (
-                  <Step key={label}>
-                    <StepLabel>{label}</StepLabel>
-                  </Step>
-                ))}
-              </Stepper>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  if (investor.currentStep < steps.length - 1) {
-                    handleUpdateInvestorStep(
-                      investor.id,
-                      investor.currentStep + 1
-                    );
-                  }
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 2,
+                  backgroundColor: 'rgba(0, 0, 0, 0.03)',
+                  borderRadius: '16px',
                 }}
-                disabled={investor.currentStep === steps.length - 1}
               >
-                Next Step
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() =>
-                  handleUpdateInvestorStatus(
-                    investor.id,
-                    investor.status === 'active' ? 'paused' : 'active'
-                  )
-                }
-              >
-                {investor.status === 'active' ? 'Pause' : 'Activate'}
-              </Button>
+                <Typography variant="body2">Email: {investor.email}</Typography>
+                <Typography variant="body2">
+                  Last Contact: {investor.lastContact || 'N/A'}
+                </Typography>
+                <Typography variant="body2">
+                  Notes: {investor.notes || 'N/A'}
+                </Typography>
+                <Stepper
+                  activeStep={investor.currentStep || 0}
+                  alternativeLabel
+                  sx={{ mt: 2 }}
+                >
+                  {steps.map((label) => (
+                    <Step key={label}>
+                      <StepLabel>{label}</StepLabel>
+                    </Step>
+                  ))}
+                </Stepper>
+                <Box
+                  sx={{
+                    mt: 2,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      if (investor.currentStep > 0) {
+                        handleUpdateInvestorStep(
+                          investor.id,
+                          investor.currentStep - 1
+                        );
+                      }
+                    }}
+                    disabled={investor.currentStep === 0}
+                  >
+                    Previous Step
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      if (investor.currentStep < steps.length - 1) {
+                        handleUpdateInvestorStep(
+                          investor.id,
+                          investor.currentStep + 1
+                        );
+                      }
+                    }}
+                    disabled={investor.currentStep === steps.length - 1}
+                  >
+                    Next Step
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() =>
+                      handleUpdateInvestorStatus(
+                        investor.id,
+                        investor.status === 'active' ? 'paused' : 'active'
+                      )
+                    }
+                  >
+                    {investor.status === 'active' ? 'Pause' : 'Activate'}
+                  </Button>
+                </Box>
+              </Box>
             </Grid>
           )}
         </Grid>
-      </StyledPaper>
+      </ArcCard>
     );
   };
 
   return (
     <Box sx={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
+      <Typography
+        variant="h4"
+        gutterBottom
+        sx={{ fontWeight: 'bold', color: '#2196F3' }}
+      >
         Investment Pipeline
       </Typography>
 
       {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
+        <Alert severity="error" sx={{ mt: 2, borderRadius: '16px' }}>
           {error}
         </Alert>
       )}
 
-      <StyledPaper>
-        <Typography variant="h6" gutterBottom>
+      <ArcCard sx={{ mb: 3 }}>
+        <Typography variant="h6" gutterBottom sx={{ color: '#2196F3' }}>
           Add New Investor
         </Typography>
         <Grid container spacing={2}>
@@ -415,18 +486,18 @@ const InvestmentPipeline: React.FC = () => {
             />
           </Grid>
           <Grid item xs={12}>
-            <Button
-              variant="contained"
+            <GradientButton
               onClick={handleAddInvestor}
               disabled={isLoading}
+              fullWidth
             >
               {isLoading ? <CircularProgress size={24} /> : 'Add Investor'}
-            </Button>
+            </GradientButton>
           </Grid>
         </Grid>
-      </StyledPaper>
+      </ArcCard>
 
-      <StyledPaper>
+      <ArcCard sx={{ mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
@@ -436,6 +507,7 @@ const InvestmentPipeline: React.FC = () => {
                 onChange={(e) =>
                   setFilterStatus(e.target.value as typeof filterStatus)
                 }
+                sx={{ borderRadius: '16px' }}
               >
                 <MenuItem value="all">All</MenuItem>
                 <MenuItem value="active">Active</MenuItem>
@@ -450,6 +522,7 @@ const InvestmentPipeline: React.FC = () => {
               <Select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                sx={{ borderRadius: '16px' }}
               >
                 <MenuItem value="name">Name</MenuItem>
                 <MenuItem value="company">Company</MenuItem>
@@ -458,7 +531,7 @@ const InvestmentPipeline: React.FC = () => {
             </FormControl>
           </Grid>
         </Grid>
-      </StyledPaper>
+      </ArcCard>
 
       {sortedInvestors.map((investor) => (
         <InvestorCard
