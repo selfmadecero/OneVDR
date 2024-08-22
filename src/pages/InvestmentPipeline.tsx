@@ -257,19 +257,14 @@ const InvestmentPipeline: React.FC = () => {
           text: commentText,
           date: new Date().toISOString(),
         };
+
+        // Firebase에 코멘트 추가
         await updateDoc(investorRef, {
           comments: arrayUnion(newComment),
         });
-        setInvestors((prevInvestors) =>
-          prevInvestors.map((investor) =>
-            investor.id === investorId
-              ? {
-                  ...investor,
-                  comments: [...(investor.comments || []), newComment],
-                }
-              : investor
-          )
-        );
+
+        // 로컬 상태 업데이트는 제거
+        // Firebase의 onSnapshot 리스너가 자동으로 상태를 업데이트할 것입니다.
       } catch (error) {
         console.error('Error adding comment:', error);
         setError('Failed to add comment. Please try again.');
