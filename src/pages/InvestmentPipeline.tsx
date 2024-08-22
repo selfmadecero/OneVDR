@@ -272,6 +272,44 @@ const InvestmentPipeline: React.FC = () => {
     }
   };
 
+  const handleUpdateComment = async (
+    investorId: string,
+    commentId: string,
+    newText: string
+  ) => {
+    if (user) {
+      const investorRef = doc(db, 'users', user.uid, 'investors', investorId);
+      try {
+        const investorDoc = await getDoc(investorRef);
+        const currentComments = investorDoc.data()?.comments || [];
+        const updatedComments = currentComments.map((comment: any) =>
+          comment.id === commentId ? { ...comment, text: newText } : comment
+        );
+        await updateDoc(investorRef, { comments: updatedComments });
+      } catch (error) {
+        console.error('Error updating comment:', error);
+        setError('Failed to update comment. Please try again.');
+      }
+    }
+  };
+
+  const handleDeleteComment = async (investorId: string, commentId: string) => {
+    if (user) {
+      const investorRef = doc(db, 'users', user.uid, 'investors', investorId);
+      try {
+        const investorDoc = await getDoc(investorRef);
+        const currentComments = investorDoc.data()?.comments || [];
+        const updatedComments = currentComments.filter(
+          (comment: any) => comment.id !== commentId
+        );
+        await updateDoc(investorRef, { comments: updatedComments });
+      } catch (error) {
+        console.error('Error deleting comment:', error);
+        setError('Failed to delete comment. Please try again.');
+      }
+    }
+  };
+
   const filteredInvestors = investors.filter((investor) =>
     filterStatus === 'all' ? true : investor.status === filterStatus
   );
@@ -308,16 +346,53 @@ const InvestmentPipeline: React.FC = () => {
       investorId: string,
       commentText: string
     ) => Promise<void>;
-  }> = ({ investor, expanded, onToggleExpand, handleAddComment }) => {
+    handleUpdateComment: (
+      investorId: string,
+      commentId: string,
+      newText: string
+    ) => Promise<void>;
+    handleDeleteComment: (
+      investorId: string,
+      commentId: string
+    ) => Promise<void>;
+  }> = ({
+    investor,
+    expanded,
+    onToggleExpand,
+    handleAddComment,
+    handleUpdateComment,
+    handleDeleteComment,
+  }) => {
     const [dataRoomStats, setDataRoomStats] = useState<DataRoomStats | null>(
       null
     );
     const [newComment, setNewComment] = useState('');
+    const [editingCommentId, setEditingCommentId] = useState<string | null>(
+      null
+    );
+    const [editingCommentText, setEditingCommentText] = useState('');
 
     const handleCommentSubmit = () => {
       if (newComment.trim()) {
         handleAddComment(investor.id, newComment.trim());
         setNewComment('');
+      }
+    };
+
+    const handleEditComment = (commentId: string, currentText: string) => {
+      setEditingCommentId(commentId);
+      setEditingCommentText(currentText);
+    };
+
+    const handleSaveEditedComment = () => {
+      if (editingCommentId && editingCommentText.trim()) {
+        handleUpdateComment(
+          investor.id,
+          editingCommentId,
+          editingCommentText.trim()
+        );
+        setEditingCommentId(null);
+        setEditingCommentText('');
       }
     };
 
@@ -485,10 +560,46 @@ const InvestmentPipeline: React.FC = () => {
                   <List>
                     {investor.comments?.map((comment, index) => (
                       <ListItem key={`${comment.id}-${index}`}>
-                        <ListItemText
-                          primary={comment.text}
-                          secondary={new Date(comment.date).toLocaleString()}
-                        />
+                        {editingCommentId === comment.id ? (
+                          <>
+                            <TextField
+                              fullWidth
+                              value={editingCommentText}
+                              onChange={(e) =>
+                                setEditingCommentText(e.target.value)
+                              }
+                            />
+                            <Button onClick={handleSaveEditedComment}>
+                              Save
+                            </Button>
+                            <Button onClick={() => setEditingCommentId(null)}>
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <ListItemText
+                              primary={comment.text}
+                              secondary={new Date(
+                                comment.date
+                              ).toLocaleString()}
+                            />
+                            <Button
+                              onClick={() =>
+                                handleEditComment(comment.id, comment.text)
+                              }
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                handleDeleteComment(investor.id, comment.id)
+                              }
+                            >
+                              Delete
+                            </Button>
+                          </>
+                        )}
                       </ListItem>
                     ))}
                   </List>
@@ -665,6 +776,8 @@ const InvestmentPipeline: React.FC = () => {
           expanded={expandedCards[investor.id] || false}
           onToggleExpand={() => toggleCardExpansion(investor.id)}
           handleAddComment={handleAddComment}
+          handleUpdateComment={handleUpdateComment}
+          handleDeleteComment={handleDeleteComment}
         />
       ))}
 
