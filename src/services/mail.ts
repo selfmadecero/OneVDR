@@ -27,29 +27,20 @@ export interface Communication {
   investorName: string;
 }
 
-export const syncGoogleMail = async () => {
+export const syncGoogleMail = async (): Promise<EmailMessage[]> => {
   const user = auth.currentUser;
   if (!user) throw new Error('User not authenticated');
 
-  const provider = new GoogleAuthProvider();
-  provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
-
   try {
-    const signInResult = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(signInResult);
-    if (!credential) throw new Error('Failed to get Google credential');
-
-    const token = credential.accessToken;
-    if (!token) throw new Error('Failed to get access token');
-
-    console.log('Successfully obtained Gmail access token');
-
+    const idToken = await user.getIdToken();
     const functions = getFunctions();
-    const getGmailMessages = httpsCallable<
-      { accessToken: string },
-      EmailMessage[]
-    >(functions, 'getGmailMessages');
-    const result = await getGmailMessages({ accessToken: token });
+    const getGmailMessages = httpsCallable<{ idToken: string }, EmailMessage[]>(
+      functions,
+      'getGmailMessages'
+    );
+    console.log('Calling getGmailMessages function');
+    const result = await getGmailMessages({ idToken });
+    console.log('getGmailMessages result:', result);
     const emails = result.data;
 
     // Save emails to Firestore
@@ -59,8 +50,20 @@ export const syncGoogleMail = async () => {
 
     return emails;
   } catch (error) {
-    console.error('Error syncing Google Mail:', error);
-    throw error;
+    console.error('Detailed error syncing Google Mail:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to sync Gmail: ${error.message}`);
+    } else if (
+      typeof error === 'object' &&
+      error !== null &&
+      'message' in error
+    ) {
+      throw new Error(
+        `Failed to sync Gmail: ${(error as { message: string }).message}`
+      );
+    } else {
+      throw new Error('Failed to sync Gmail: Unknown error');
+    }
   }
 };
 

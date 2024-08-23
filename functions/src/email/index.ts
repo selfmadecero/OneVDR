@@ -1,55 +1,92 @@
 import * as functions from 'firebase-functions';
 import { google } from 'googleapis';
-import * as cors from 'cors';
+import * as admin from 'firebase-admin';
 
-const corsHandler = cors({ origin: true, credentials: true });
+admin.initializeApp();
+
+const logError = (error: any) => {
+  console.error('Detailed error:', error);
+  if (error instanceof Error) {
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+  }
+};
 
 const oauth2Client = new google.auth.OAuth2(
-  functions.config().gmail.client_id,
-  functions.config().gmail.client_secret,
-  functions.config().gmail.redirect_uri
+  functions.config().gmail?.client_id,
+  functions.config().gmail?.client_secret,
+  functions.config().gmail?.redirect_uri
 );
 
-export const getGmailMessages = functions.https.onRequest(
-  (request, response) => {
-    corsHandler(request, response, async () => {
-      if (!request.headers.authorization) {
-        response.status(401).send('Unauthorized');
-        return;
-      }
+export const getGmailMessages = functions.https.onCall(
+  async (data, context) => {
+    console.log('getGmailMessages function called');
+    if (!context.auth) {
+      console.log('User not authenticated');
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'User must be authenticated'
+      );
+    }
 
-      const { accessToken } = request.body;
-      oauth2Client.setCredentials({ access_token: accessToken });
+    try {
+      console.log('Verifying ID token');
+      const { idToken } = data;
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const uid = decodedToken.uid;
 
+      console.log('Getting OAuth2 tokens');
+      const tokens = await admin
+        .auth()
+        .getUser(uid)
+        .then((userRecord) => {
+          const providerData = userRecord.providerData.find(
+            (provider) => provider.providerId === 'google.com'
+          );
+          if (!providerData) {
+            throw new Error('User is not authenticated with Google');
+          }
+          return providerData.toJSON();
+        });
+
+      console.log('Setting OAuth2 credentials');
+      oauth2Client.setCredentials({
+        access_token: (tokens as any).accessToken,
+        refresh_token: (tokens as any).refreshToken,
+      });
+
+      console.log('Initializing Gmail API');
       const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-      try {
-        const gmailResponse = await gmail.users.messages.list({
-          userId: 'me',
-          maxResults: 10,
-        });
+      console.log('Fetching Gmail messages');
+      const response = await gmail.users.messages.list({
+        userId: 'me',
+        maxResults: 10,
+      });
 
-        const messages = gmailResponse.data.messages || [];
-        const emailDetails = await Promise.all(
-          messages.map(async (message: any) => {
+      const messages = response.data.messages || [];
+      const emailDetails = await Promise.all(
+        messages.map(async (message) => {
+          if (message.id) {
             const details = await gmail.users.messages.get({
               userId: 'me',
-              id: message.id!,
+              id: message.id,
             });
             return parseEmailDetails(details.data);
-          })
-        );
+          }
+          return null;
+        })
+      );
 
-        response.json(emailDetails);
-      } catch (error) {
-        console.error('Error fetching Gmail messages:', error);
-        response.status(500).json({
-          error: 'Internal Server Error',
-          message:
-            error instanceof Error ? error.message : 'Unknown error occurred',
-        });
-      }
-    });
+      return emailDetails.filter((detail) => detail !== null);
+    } catch (error) {
+      logError(error);
+      throw new functions.https.HttpsError(
+        'internal',
+        'Failed to fetch Gmail messages: ' +
+          (error instanceof Error ? error.message : 'Unknown error')
+      );
+    }
   }
 );
 

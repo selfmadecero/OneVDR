@@ -20,13 +20,8 @@ import {
 } from '@mui/material';
 import { styled, useTheme } from '@mui/material/styles';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '../services/firebase';
-import { User } from '../types';
-import {
-  getCommunicationHistory,
-  addCommunication,
-  Communication,
-} from '../services/mail';
+import { auth, googleProvider } from '../services/firebase';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { syncGoogleMail, getEmails, EmailMessage } from '../services/mail';
 import InvestorCommunication from '../components/InvestorCommunication';
 
@@ -79,30 +74,45 @@ const Email: React.FC = () => {
 
   useEffect(() => {
     const fetchEmails = async () => {
-      setIsLoading(true);
-      try {
-        const fetchedEmails = await getEmails();
-        setEmails(fetchedEmails);
-      } catch (err) {
-        setError('Failed to fetch emails');
-      } finally {
-        setIsLoading(false);
+      if (user) {
+        setIsLoading(true);
+        try {
+          const fetchedEmails = await getEmails();
+          setEmails(fetchedEmails);
+        } catch (err) {
+          setError('Failed to fetch emails');
+        } finally {
+          setIsLoading(false);
+        }
       }
     };
     fetchEmails();
-  }, []);
+  }, [user]);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+      setError('Failed to sign in with Google. Please try again.');
+    }
+  };
 
   const handleSyncEmails = async () => {
-    try {
+    if (user) {
       setIsLoading(true);
-      const syncedEmails = await syncGoogleMail();
-      setEmails(syncedEmails);
-      setError(null);
-    } catch (err) {
-      console.error('Error syncing emails:', err);
-      setError('Failed to sync emails from Gmail. Please try again.');
-    } finally {
-      setIsLoading(false);
+      try {
+        const syncedEmails = await syncGoogleMail();
+        setEmails(syncedEmails);
+        setError(null);
+      } catch (err) {
+        console.error('Error syncing emails:', err);
+        setError('Failed to sync emails from Gmail. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -124,9 +134,18 @@ const Email: React.FC = () => {
         >
           Sync Gmail
         </Typography>
-        <GradientButton onClick={handleSyncEmails} sx={{ mr: 2 }}>
-          Sync Gmail
-        </GradientButton>
+        {!user && (
+          <GradientButton onClick={handleGoogleSignIn}>
+            Sign in with Google
+          </GradientButton>
+        )}
+        {user && (
+          <GradientButton onClick={handleSyncEmails} disabled={isLoading}>
+            {isLoading ? 'Syncing...' : 'Sync Gmail'}
+          </GradientButton>
+        )}
+        {error && <Alert severity="error">{error}</Alert>}
+        {isLoading && <CircularProgress />}
         <Typography variant="body2" sx={{ mt: 2, mb: 2 }}>
           Note: For the MVP version, only Google Mail integration is available.
         </Typography>
@@ -140,24 +159,18 @@ const Email: React.FC = () => {
         >
           Email List
         </Typography>
-        {isLoading ? (
-          <CircularProgress />
-        ) : error ? (
-          <Alert severity="error">{error}</Alert>
-        ) : (
-          <List>
-            {emails.map((email) => (
-              <ListItem key={email.id}>
-                <ListItemText
-                  primary={email.subject}
-                  secondary={`From: ${email.from} | Date: ${new Date(
-                    email.date
-                  ).toLocaleString()}`}
-                />
-              </ListItem>
-            ))}
-          </List>
-        )}
+        <List>
+          {emails.map((email) => (
+            <ListItem key={email.id}>
+              <ListItemText
+                primary={email.subject}
+                secondary={`From: ${email.from} | Date: ${new Date(
+                  email.date
+                ).toLocaleString()}`}
+              />
+            </ListItem>
+          ))}
+        </List>
       </ArcCard>
 
       <ArcCard>

@@ -42,6 +42,15 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Confetti from 'react-confetti';
 import { DataRoomStats, Investor } from '../types';
+import {
+  analyzeDocuments,
+  analyzePotentialInvestorFit,
+  generateInvestorInsights,
+  analyzeInvestorPortfolio,
+  predictInvestmentLikelihood,
+  suggestNextActions,
+} from '../services/ai';
+import { AIInsights } from '../services/ai';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -85,7 +94,8 @@ const ArcCard = styled(Box)(({ theme }) => ({
 
 const steps = [
   'Initial Contact',
-  'Pitch Deck',
+  'Pitch Deck Review',
+  'First Meeting',
   'Due Diligence',
   'Term Sheet',
   'Negotiation',
@@ -130,6 +140,12 @@ const InvestmentPipeline: React.FC = () => {
   }>({});
   const [showConfetti, setShowConfetti] = useState(false);
   const navigate = useNavigate();
+  const [aiInsights, setAiInsights] = useState<AIInsights | null>(null);
+  const [portfolioAnalysis, setPortfolioAnalysis] = useState<string[]>([]);
+  const [investmentLikelihood, setInvestmentLikelihood] = useState<
+    number | null
+  >(null);
+  const [suggestedActions, setSuggestedActions] = useState<string[]>([]);
 
   const toggleCardExpansion = (investorId: string) => {
     setExpandedCards((prev) => ({
@@ -158,6 +174,16 @@ const InvestmentPipeline: React.FC = () => {
       return unsubscribe;
     }
   }, [user]);
+
+  useEffect(() => {
+    const fetchAIInsights = async () => {
+      if (investors.length > 0) {
+        const insights = await analyzeDocuments(investors);
+        setAiInsights(insights);
+      }
+    };
+    fetchAIInsights();
+  }, [investors]);
 
   const handleAddInvestor = async () => {
     if (user) {
@@ -259,6 +285,21 @@ const InvestmentPipeline: React.FC = () => {
           )
         );
         setEditingInvestor(null);
+
+        // AI 분석 업데이트
+        const portfolio = await analyzeInvestorPortfolio(updatedInvestor);
+        setPortfolioAnalysis(portfolio);
+
+        const likelihood = await predictInvestmentLikelihood(updatedInvestor, {
+          /* 스타트업 정보 */
+        });
+        setInvestmentLikelihood(likelihood);
+
+        const actions = await suggestNextActions(
+          updatedInvestor,
+          updatedInvestor.currentStep
+        );
+        setSuggestedActions(actions);
       } catch (error) {
         console.error('Error updating investor:', error);
         setError('Failed to update investor. Please try again.');
@@ -343,7 +384,7 @@ const InvestmentPipeline: React.FC = () => {
   const fetchDataRoomStats = async (
     investorId: string
   ): Promise<DataRoomStats> => {
-    // 여기에 Firebase ���는 API 호출을 통해 데이터룸 통계를 가져오는 로직을 구현합니다.
+    // 여기에 Firebase 는 API 호출을 통해 데이터룸 통계를 가져오는 로직을 구현합니다.
     // 예시 코드:
     const statsRef = doc(db, 'dataRoomStats', investorId);
     const statsDoc = await getDoc(statsRef);
@@ -389,6 +430,10 @@ const InvestmentPipeline: React.FC = () => {
       null
     );
     const [editingCommentText, setEditingCommentText] = useState('');
+    const [investorFit, setInvestorFit] = useState<number | null>(null);
+    const [investorInsights, setInvestorInsights] = useState<string | null>(
+      null
+    );
 
     const handleCommentSubmit = () => {
       if (newComment.trim()) {
@@ -419,6 +464,16 @@ const InvestmentPipeline: React.FC = () => {
         fetchDataRoomStats(investor.id).then(setDataRoomStats);
       }
     }, [expanded, investor.id]);
+
+    useEffect(() => {
+      const fetchInvestorAnalysis = async () => {
+        const fit = await analyzePotentialInvestorFit(investor);
+        const insights = await generateInvestorInsights(investor);
+        setInvestorFit(fit);
+        setInvestorInsights(insights);
+      };
+      fetchInvestorAnalysis();
+    }, [investor]);
 
     return (
       <ArcCard>
@@ -651,6 +706,46 @@ const InvestmentPipeline: React.FC = () => {
                     </Button>
                   </Box>
                 </Box>
+                {investorFit !== null && (
+                  <Typography variant="body2">
+                    Investor Fit: {investorFit}%
+                  </Typography>
+                )}
+                {investorInsights && (
+                  <Typography variant="body2">
+                    AI Insights: {investorInsights}
+                  </Typography>
+                )}
+                {portfolioAnalysis.length > 0 && (
+                  <Box>
+                    <Typography variant="body2">Portfolio Focus:</Typography>
+                    {portfolioAnalysis.map((focus, index) => (
+                      <Chip
+                        key={index}
+                        label={focus}
+                        size="small"
+                        sx={{ m: 0.5 }}
+                      />
+                    ))}
+                  </Box>
+                )}
+                {investmentLikelihood !== null && (
+                  <Typography variant="body2">
+                    Investment Likelihood: {investmentLikelihood}%
+                  </Typography>
+                )}
+                {suggestedActions.length > 0 && (
+                  <Box>
+                    <Typography variant="body2">
+                      Suggested Next Actions:
+                    </Typography>
+                    <ul>
+                      {suggestedActions.map((action, index) => (
+                        <li key={index}>{action}</li>
+                      ))}
+                    </ul>
+                  </Box>
+                )}
               </Box>
             </Grid>
           )}
