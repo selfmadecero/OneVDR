@@ -44,6 +44,32 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   },
 }));
 
+const GradientButton = styled(Button)(({ theme }) => ({
+  background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+  border: 0,
+  borderRadius: theme.spacing(3),
+  boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+  color: 'white',
+  height: 48,
+  padding: '0 30px',
+}));
+
+const ArcCard = styled(Box)(({ theme }) => ({
+  background: 'rgba(255, 255, 255, 0.8)',
+  borderRadius: theme.spacing(3),
+  padding: theme.spacing(3),
+  boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+  backdropFilter: 'blur(4px)',
+  border: '1px solid rgba(255, 255, 255, 0.18)',
+  transition: 'all 0.3s ease-in-out',
+  marginBottom: theme.spacing(2),
+  '&:hover': {
+    transform: 'translateY(-5px)',
+    boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.45)',
+    background: 'rgba(255, 255, 255, 0.9)',
+  },
+}));
+
 const Email: React.FC = () => {
   const theme = useTheme();
   const [user] = useAuthState(auth);
@@ -82,24 +108,37 @@ const Email: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <StyledPaper>
+      <Typography
+        variant="h4"
+        gutterBottom
+        sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
+      >
+        Email Inbox
+      </Typography>
+
+      <ArcCard>
         <Typography
-          variant="h4"
+          variant="h6"
           gutterBottom
-          sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
-        >
-          Email Inbox
-        </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleSyncEmails}
-          sx={{ mr: 2 }}
+          sx={{ color: theme.palette.primary.main }}
         >
           Sync Gmail
-        </Button>
+        </Typography>
+        <GradientButton onClick={handleSyncEmails} sx={{ mr: 2 }}>
+          Sync Gmail
+        </GradientButton>
         <Typography variant="body2" sx={{ mt: 2, mb: 2 }}>
           Note: For the MVP version, only Google Mail integration is available.
+        </Typography>
+      </ArcCard>
+
+      <ArcCard>
+        <Typography
+          variant="h6"
+          gutterBottom
+          sx={{ color: theme.palette.primary.main }}
+        >
+          Email List
         </Typography>
         {isLoading ? (
           <CircularProgress />
@@ -119,8 +158,18 @@ const Email: React.FC = () => {
             ))}
           </List>
         )}
-      </StyledPaper>
-      <InvestorCommunication />
+      </ArcCard>
+
+      <ArcCard>
+        <Typography
+          variant="h6"
+          gutterBottom
+          sx={{ color: theme.palette.primary.main }}
+        >
+          Investor Communication
+        </Typography>
+        <InvestorCommunication />
+      </ArcCard>
     </Box>
   );
 };

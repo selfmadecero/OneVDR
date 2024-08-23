@@ -19,6 +19,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  Button,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { styled, useTheme } from '@mui/material/styles';
@@ -40,18 +41,30 @@ import { SelectChangeEvent } from '@mui/material/Select';
 import { useNavigate } from 'react-router-dom';
 import { getDocs, QueryDocumentSnapshot } from 'firebase/firestore';
 
-const StyledPaper = styled(Paper)(({ theme }) => ({
+const ArcCard = styled(Box)(({ theme }) => ({
+  background: 'rgba(255, 255, 255, 0.8)',
+  borderRadius: theme.spacing(3),
   padding: theme.spacing(3),
-  marginBottom: theme.spacing(3),
-  borderRadius: theme.spacing(2),
-  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
-  backdropFilter: 'blur(10px)',
-  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+  backdropFilter: 'blur(4px)',
+  border: '1px solid rgba(255, 255, 255, 0.18)',
   transition: 'all 0.3s ease-in-out',
+  marginBottom: theme.spacing(2),
   '&:hover': {
     transform: 'translateY(-5px)',
-    boxShadow: '0 15px 40px rgba(0, 0, 0, 0.15)',
+    boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.45)',
+    background: 'rgba(255, 255, 255, 0.9)',
   },
+}));
+
+const GradientButton = styled(Button)(({ theme }) => ({
+  background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+  border: 0,
+  borderRadius: theme.spacing(3),
+  boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+  color: 'white',
+  height: 48,
+  padding: '0 30px',
 }));
 
 const CategoryChip = styled(Chip)(({ theme }) => ({
@@ -230,11 +243,19 @@ const DataRoom: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <StyledPaper>
+      <Typography
+        variant="h4"
+        gutterBottom
+        sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
+      >
+        Data Room
+      </Typography>
+
+      <ArcCard>
         <Typography
-          variant="h4"
+          variant="h6"
           gutterBottom
-          sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
+          sx={{ color: theme.palette.primary.main }}
         >
           Upload Documents
         </Typography>
@@ -245,13 +266,13 @@ const DataRoom: React.FC = () => {
           user={user as User}
           currentFolder={currentFolder?.id || null}
         />
-      </StyledPaper>
+      </ArcCard>
 
-      <StyledPaper>
+      <ArcCard>
         <Typography
-          variant="h4"
+          variant="h6"
           gutterBottom
-          sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
+          sx={{ color: theme.palette.primary.main }}
         >
           Filter and Search
         </Typography>
@@ -317,13 +338,13 @@ const DataRoom: React.FC = () => {
             </FormControl>
           </Grid>
         </Grid>
-      </StyledPaper>
+      </ArcCard>
 
-      <StyledPaper>
+      <ArcCard>
         <Typography
-          variant="h4"
+          variant="h6"
           gutterBottom
-          sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
+          sx={{ color: theme.palette.primary.main }}
         >
           All Files
         </Typography>
@@ -338,11 +359,17 @@ const DataRoom: React.FC = () => {
             onSelectFile={handleFileSelect}
           />
         )}
-      </StyledPaper>
+      </ArcCard>
 
       {investorId && (
-        <StyledPaper>
-          <Typography variant="h6">Activity Log</Typography>
+        <ArcCard>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{ color: theme.palette.primary.main }}
+          >
+            Activity Log
+          </Typography>
           <List>
             {activityLog.map((activity, index) => (
               <ListItem key={index}>
@@ -353,7 +380,7 @@ const DataRoom: React.FC = () => {
               </ListItem>
             ))}
           </List>
-        </StyledPaper>
+        </ArcCard>
       )}
     </Box>
   );
