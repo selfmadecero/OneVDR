@@ -75,8 +75,11 @@ const ArcCard = styled(Box)(({ theme }) => ({
   backdropFilter: 'blur(4px)',
   border: '1px solid rgba(255, 255, 255, 0.18)',
   transition: 'all 0.3s ease-in-out',
+  marginBottom: theme.spacing(2),
   '&:hover': {
-    transform: 'scale(1.02)',
+    transform: 'translateY(-5px)',
+    boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.45)',
+    background: 'rgba(255, 255, 255, 0.9)',
   },
 }));
 
@@ -96,12 +99,19 @@ const InvestmentPipeline: React.FC = () => {
     name: '',
     company: '',
     email: '',
+    phone: '',
+    website: '',
     currentStep: 0,
     status: 'active',
     investmentAmount: 0,
     lastContact: '',
     notes: '',
     comments: [],
+    industry: '',
+    fundSize: 0,
+    investmentStage: '',
+    location: '',
+    importance: 'medium',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -159,15 +169,23 @@ const InvestmentPipeline: React.FC = () => {
           name: '',
           company: '',
           email: '',
+          phone: '',
+          website: '',
           currentStep: 0,
           status: 'active',
           investmentAmount: 0,
           lastContact: '',
           notes: '',
           comments: [],
+          industry: '',
+          fundSize: 0,
+          investmentStage: '',
+          location: '',
+          importance: 'medium',
         });
       } catch (error) {
         console.error('Error adding investor:', error);
+        setError('Failed to add investor. Please try again.');
       } finally {
         setIsLoading(false);
       }
@@ -325,7 +343,7 @@ const InvestmentPipeline: React.FC = () => {
   const fetchDataRoomStats = async (
     investorId: string
   ): Promise<DataRoomStats> => {
-    // 여기에 Firebase 또는 API 호출을 통해 데이터룸 통계를 가져오는 로직을 구현합니다.
+    // 여기에 Firebase ���는 API 호출을 통해 데이터룸 통계를 가져오는 로직을 구현합니다.
     // 예시 코드:
     const statsRef = doc(db, 'dataRoomStats', investorId);
     const statsDoc = await getDoc(statsRef);
@@ -430,6 +448,17 @@ const InvestmentPipeline: React.FC = () => {
                   : 'error'
               }
               sx={{ borderRadius: '16px', mt: 1 }}
+            />
+            <Chip
+              label={`Importance: ${investor.importance}`}
+              color={
+                investor.importance === 'high'
+                  ? 'error'
+                  : investor.importance === 'medium'
+                  ? 'warning'
+                  : 'default'
+              }
+              sx={{ borderRadius: '16px', ml: 1 }}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -631,318 +660,505 @@ const InvestmentPipeline: React.FC = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <Typography
-        variant="h4"
-        gutterBottom
-        sx={{ fontWeight: 'bold', color: '#2196F3' }}
-      >
-        Investment Pipeline
-      </Typography>
-
-      {error && (
-        <Alert severity="error" sx={{ mt: 2, borderRadius: '16px' }}>
-          {error}
-        </Alert>
-      )}
-
-      <ArcCard sx={{ mb: 3 }}>
-        <Typography variant="h6" gutterBottom sx={{ color: '#2196F3' }}>
-          Add New Investor
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Investor Name"
-              value={newInvestor.name}
-              onChange={(e) =>
-                setNewInvestor({ ...newInvestor, name: e.target.value })
-              }
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Company"
-              value={newInvestor.company}
-              onChange={(e) =>
-                setNewInvestor({ ...newInvestor, company: e.target.value })
-              }
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Email"
-              value={newInvestor.email}
-              onChange={(e) =>
-                setNewInvestor({ ...newInvestor, email: e.target.value })
-              }
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Investment Amount"
-              type="number"
-              value={newInvestor.investmentAmount}
-              onChange={(e) =>
-                setNewInvestor({
-                  ...newInvestor,
-                  investmentAmount: parseFloat(e.target.value) || 0,
-                })
-              }
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Last Contact"
-              type="date"
-              value={newInvestor.lastContact}
-              onChange={(e) =>
-                setNewInvestor({ ...newInvestor, lastContact: e.target.value })
-              }
-              InputLabelProps={{
-                shrink: true,
-              }}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Notes"
-              multiline
-              rows={3}
-              value={newInvestor.notes}
-              onChange={(e) =>
-                setNewInvestor({ ...newInvestor, notes: e.target.value })
-              }
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <GradientButton
-              onClick={handleAddInvestor}
-              disabled={isLoading}
-              fullWidth
-            >
-              {isLoading ? <CircularProgress size={24} /> : 'Add Investor'}
-            </GradientButton>
-          </Grid>
-        </Grid>
-      </ArcCard>
-
-      <ArcCard sx={{ mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>Filter by Status</InputLabel>
-              <Select
-                value={filterStatus}
-                onChange={(e) =>
-                  setFilterStatus(e.target.value as typeof filterStatus)
-                }
-                sx={{ borderRadius: '16px' }}
-              >
-                <MenuItem value="all">All</MenuItem>
-                <MenuItem value="active">Active</MenuItem>
-                <MenuItem value="paused">Paused</MenuItem>
-                <MenuItem value="closed">Closed</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>Sort by</InputLabel>
-              <Select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                sx={{ borderRadius: '16px' }}
-              >
-                <MenuItem value="name">Name</MenuItem>
-                <MenuItem value="company">Company</MenuItem>
-                <MenuItem value="investmentAmount">Investment Amount</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-      </ArcCard>
-
-      {sortedInvestors.map((investor) => (
-        <InvestorCard
-          key={investor.id}
-          investor={investor}
-          expanded={expandedCards[investor.id] || false}
-          onToggleExpand={() => toggleCardExpansion(investor.id)}
-          handleAddComment={handleAddComment}
-          handleUpdateComment={handleUpdateComment}
-          handleDeleteComment={handleDeleteComment}
-        />
-      ))}
-
-      {editingInvestor && (
-        <Dialog
-          open={!!editingInvestor}
-          onClose={() => setEditingInvestor(null)}
-          PaperProps={{
-            style: {
-              borderRadius: '16px',
-              padding: '24px',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
-            },
-          }}
+    <>
+      <Box sx={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+        <Typography
+          variant="h4"
+          gutterBottom
+          sx={{ fontWeight: 'bold', color: '#2196F3' }}
         >
-          <DialogTitle sx={{ fontWeight: 'bold', color: '#2196F3' }}>
-            Edit Investor
-          </DialogTitle>
-          <DialogContent>
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Investor Name"
-                  value={editingInvestor.name}
-                  onChange={(e) =>
-                    setEditingInvestor({
-                      ...editingInvestor,
-                      name: e.target.value,
-                    })
-                  }
-                  sx={{ mt: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Company"
-                  value={editingInvestor.company}
-                  onChange={(e) =>
-                    setEditingInvestor({
-                      ...editingInvestor,
-                      company: e.target.value,
-                    })
-                  }
-                  sx={{ mt: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  value={editingInvestor.email}
-                  onChange={(e) =>
-                    setEditingInvestor({
-                      ...editingInvestor,
-                      email: e.target.value,
-                    })
-                  }
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Investment Amount"
-                  type="number"
-                  value={editingInvestor.investmentAmount}
-                  onChange={(e) =>
-                    setEditingInvestor({
-                      ...editingInvestor,
-                      investmentAmount: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">$</InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Last Contact"
-                  type="date"
-                  value={editingInvestor.lastContact}
-                  onChange={(e) =>
-                    setEditingInvestor({
-                      ...editingInvestor,
-                      lastContact: e.target.value,
-                    })
-                  }
-                  InputLabelProps={{
-                    shrink: true,
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Notes"
-                  multiline
-                  rows={4}
-                  value={editingInvestor.notes}
-                  onChange={(e) =>
-                    setEditingInvestor({
-                      ...editingInvestor,
-                      notes: e.target.value,
-                    })
-                  }
-                />
-              </Grid>
+          Investment Pipeline
+        </Typography>
+
+        {error && (
+          <Alert severity="error" sx={{ mt: 2, borderRadius: '16px' }}>
+            {error}
+          </Alert>
+        )}
+
+        <ArcCard sx={{ mb: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ color: '#2196F3' }}>
+            Add New Investor
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Investor Name"
+                value={newInvestor.name}
+                onChange={(e) =>
+                  setNewInvestor({ ...newInvestor, name: e.target.value })
+                }
+                required
+              />
             </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Company"
+                value={newInvestor.company}
+                onChange={(e) =>
+                  setNewInvestor({ ...newInvestor, company: e.target.value })
+                }
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Email"
+                type="email"
+                value={newInvestor.email}
+                onChange={(e) =>
+                  setNewInvestor({ ...newInvestor, email: e.target.value })
+                }
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Phone"
+                value={newInvestor.phone}
+                onChange={(e) =>
+                  setNewInvestor({ ...newInvestor, phone: e.target.value })
+                }
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Website"
+                value={newInvestor.website}
+                onChange={(e) =>
+                  setNewInvestor({ ...newInvestor, website: e.target.value })
+                }
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Investment Amount"
+                type="number"
+                value={newInvestor.investmentAmount}
+                onChange={(e) =>
+                  setNewInvestor({
+                    ...newInvestor,
+                    investmentAmount: parseFloat(e.target.value) || 0,
+                  })
+                }
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">$</InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Industry"
+                value={newInvestor.industry}
+                onChange={(e) =>
+                  setNewInvestor({ ...newInvestor, industry: e.target.value })
+                }
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Fund Size"
+                type="number"
+                value={newInvestor.fundSize}
+                onChange={(e) =>
+                  setNewInvestor({
+                    ...newInvestor,
+                    fundSize: parseFloat(e.target.value) || 0,
+                  })
+                }
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">$</InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Investment Stage"
+                value={newInvestor.investmentStage}
+                onChange={(e) =>
+                  setNewInvestor({
+                    ...newInvestor,
+                    investmentStage: e.target.value,
+                  })
+                }
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Location"
+                value={newInvestor.location}
+                onChange={(e) =>
+                  setNewInvestor({ ...newInvestor, location: e.target.value })
+                }
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Importance</InputLabel>
+                <Select
+                  value={newInvestor.importance}
+                  onChange={(e) =>
+                    setNewInvestor({
+                      ...newInvestor,
+                      importance: e.target.value as 'low' | 'medium' | 'high',
+                    })
+                  }
+                >
+                  <MenuItem value="low">Low</MenuItem>
+                  <MenuItem value="medium">Medium</MenuItem>
+                  <MenuItem value="high">High</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Notes"
+                multiline
+                rows={4}
+                value={newInvestor.notes}
+                onChange={(e) =>
+                  setNewInvestor({ ...newInvestor, notes: e.target.value })
+                }
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <GradientButton
+                onClick={handleAddInvestor}
+                disabled={
+                  isLoading ||
+                  !newInvestor.name ||
+                  !newInvestor.company ||
+                  !newInvestor.email
+                }
+                fullWidth
+              >
+                {isLoading ? <CircularProgress size={24} /> : 'Add Investor'}
+              </GradientButton>
+            </Grid>
+          </Grid>
+        </ArcCard>
+
+        <ArcCard sx={{ mb: 3 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Filter by Status</InputLabel>
+                <Select
+                  value={filterStatus}
+                  onChange={(e) =>
+                    setFilterStatus(e.target.value as typeof filterStatus)
+                  }
+                  sx={{ borderRadius: '16px' }}
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="active">Active</MenuItem>
+                  <MenuItem value="paused">Paused</MenuItem>
+                  <MenuItem value="closed">Closed</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Sort by</InputLabel>
+                <Select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                  sx={{ borderRadius: '16px' }}
+                >
+                  <MenuItem value="name">Name</MenuItem>
+                  <MenuItem value="company">Company</MenuItem>
+                  <MenuItem value="investmentAmount">
+                    Investment Amount
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </ArcCard>
+
+        {sortedInvestors.map((investor) => (
+          <InvestorCard
+            key={investor.id}
+            investor={investor}
+            expanded={expandedCards[investor.id] || false}
+            onToggleExpand={() => toggleCardExpansion(investor.id)}
+            handleAddComment={handleAddComment}
+            handleUpdateComment={handleUpdateComment}
+            handleDeleteComment={handleDeleteComment}
+          />
+        ))}
+
+        {editingInvestor && (
+          <Dialog
+            open={!!editingInvestor}
+            onClose={() => setEditingInvestor(null)}
+            PaperProps={{
+              style: {
+                borderRadius: '16px',
+                padding: '24px',
+                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
+              },
+            }}
+          >
+            <DialogTitle sx={{ fontWeight: 'bold', color: '#2196F3' }}>
+              Edit Investor
+            </DialogTitle>
+            <DialogContent>
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Investor Name"
+                    value={editingInvestor.name}
+                    onChange={(e) =>
+                      setEditingInvestor({
+                        ...editingInvestor,
+                        name: e.target.value,
+                      })
+                    }
+                    sx={{ mt: 2 }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Company"
+                    value={editingInvestor.company}
+                    onChange={(e) =>
+                      setEditingInvestor({
+                        ...editingInvestor,
+                        company: e.target.value,
+                      })
+                    }
+                    sx={{ mt: 2 }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    value={editingInvestor.email}
+                    onChange={(e) =>
+                      setEditingInvestor({
+                        ...editingInvestor,
+                        email: e.target.value,
+                      })
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Investment Amount"
+                    type="number"
+                    value={editingInvestor.investmentAmount}
+                    onChange={(e) =>
+                      setEditingInvestor({
+                        ...editingInvestor,
+                        investmentAmount: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">$</InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Last Contact"
+                    type="date"
+                    value={editingInvestor.lastContact}
+                    onChange={(e) =>
+                      setEditingInvestor({
+                        ...editingInvestor,
+                        lastContact: e.target.value,
+                      })
+                    }
+                    InputLabelProps={{
+                      shrink: true,
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Industry"
+                    value={editingInvestor.industry}
+                    onChange={(e) =>
+                      setEditingInvestor({
+                        ...editingInvestor,
+                        industry: e.target.value,
+                      })
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Fund Size"
+                    type="number"
+                    value={editingInvestor.fundSize}
+                    onChange={(e) =>
+                      setEditingInvestor({
+                        ...editingInvestor,
+                        fundSize: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">$</InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Investment Stage"
+                    value={editingInvestor.investmentStage}
+                    onChange={(e) =>
+                      setEditingInvestor({
+                        ...editingInvestor,
+                        investmentStage: e.target.value,
+                      })
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Location"
+                    value={editingInvestor.location}
+                    onChange={(e) =>
+                      setEditingInvestor({
+                        ...editingInvestor,
+                        location: e.target.value,
+                      })
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Importance</InputLabel>
+                    <Select
+                      value={editingInvestor.importance}
+                      onChange={(e) =>
+                        setEditingInvestor({
+                          ...editingInvestor,
+                          importance: e.target.value as
+                            | 'low'
+                            | 'medium'
+                            | 'high',
+                        })
+                      }
+                    >
+                      <MenuItem value="low">Low</MenuItem>
+                      <MenuItem value="medium">Medium</MenuItem>
+                      <MenuItem value="high">High</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Notes"
+                    multiline
+                    rows={4}
+                    value={editingInvestor.notes}
+                    onChange={(e) =>
+                      setEditingInvestor({
+                        ...editingInvestor,
+                        notes: e.target.value,
+                      })
+                    }
+                  />
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions
+              sx={{ justifyContent: 'space-between', px: 3, pb: 3 }}
+            >
+              <Button
+                onClick={() => setEditingInvestor(null)}
+                sx={{
+                  color: '#9e9e9e',
+                  '&:hover': { backgroundColor: 'rgba(158, 158, 158, 0.1)' },
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => handleEditInvestor(editingInvestor)}
+                variant="contained"
+                sx={{
+                  background:
+                    'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                  color: 'white',
+                  boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                }}
+              >
+                Save
+              </Button>
+            </DialogActions>
+          </Dialog>
+        )}
+
+        <Dialog
+          open={!!deleteConfirmation}
+          onClose={() => setDeleteConfirmation(null)}
+        >
+          <DialogTitle>Confirm Deletion</DialogTitle>
+          <DialogContent>
+            Are you sure you want to delete this investor?
           </DialogContent>
-          <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 3 }}>
+          <DialogActions>
+            <Button onClick={() => setDeleteConfirmation(null)}>Cancel</Button>
             <Button
-              onClick={() => setEditingInvestor(null)}
-              sx={{
-                color: '#9e9e9e',
-                '&:hover': { backgroundColor: 'rgba(158, 158, 158, 0.1)' },
+              color="error"
+              onClick={() => {
+                if (deleteConfirmation) {
+                  handleDeleteInvestor(deleteConfirmation);
+                  setDeleteConfirmation(null);
+                }
               }}
             >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => handleEditInvestor(editingInvestor)}
-              variant="contained"
-              sx={{
-                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-                color: 'white',
-                boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
-              }}
-            >
-              Save
+              Delete
             </Button>
           </DialogActions>
         </Dialog>
+      </Box>
+      {showConfetti && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            zIndex: 9999,
+            pointerEvents: 'none',
+          }}
+        />
       )}
-
-      <Dialog
-        open={!!deleteConfirmation}
-        onClose={() => setDeleteConfirmation(null)}
-      >
-        <DialogTitle>Confirm Deletion</DialogTitle>
-        <DialogContent>
-          Are you sure you want to delete this investor?
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteConfirmation(null)}>Cancel</Button>
-          <Button
-            color="error"
-            onClick={() => {
-              if (deleteConfirmation) {
-                handleDeleteInvestor(deleteConfirmation);
-                setDeleteConfirmation(null);
-              }
-            }}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {showConfetti && <Confetti />}
-    </Box>
+    </>
   );
 };
 

@@ -11,7 +11,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
 import DataRoom from './pages/DataRoom';
-import Mail from './pages/Mail';
+import Email from './pages/Email';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import { Box } from '@mui/material';
@@ -67,7 +67,7 @@ const AppContent: React.FC = () => {
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/dataroom" element={<DataRoom />} />
-          <Route path="/mail" element={<Mail />} />
+          <Route path="/email" element={<Email />} />
           <Route path="/investment-pipeline" element={<InvestmentPipeline />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

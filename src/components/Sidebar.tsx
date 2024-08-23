@@ -1,4 +1,8 @@
-import { Description, Mail as MailIcon, TrendingUp } from '@mui/icons-material';
+import {
+  Description,
+  Email as EmailIcon,
+  TrendingUp,
+} from '@mui/icons-material';
 import {
   Drawer,
   List,
@@ -55,24 +59,24 @@ const Sidebar: React.FC = () => {
         </ListItem>
         <ListItem
           button
-          onClick={() => navigate('/mail')}
+          onClick={() => navigate('/email')}
           sx={{
-            backgroundColor: isActive('/mail')
+            backgroundColor: isActive('/email')
               ? 'rgba(33, 150, 243, 0.1)'
               : 'transparent',
             '&:hover': { backgroundColor: 'rgba(33, 150, 243, 0.1)' },
           }}
         >
           <ListItemIcon>
-            <MailIcon
-              sx={{ color: isActive('/mail') ? '#2196f3' : 'inherit' }}
+            <EmailIcon
+              sx={{ color: isActive('/email') ? '#2196f3' : 'inherit' }}
             />
           </ListItemIcon>
           <ListItemText
-            primary="Mail"
+            primary="Email"
             primaryTypographyProps={{
-              fontWeight: isActive('/mail') ? 'bold' : 'medium',
-              color: isActive('/mail') ? '#2196f3' : 'inherit',
+              fontWeight: isActive('/email') ? 'bold' : 'medium',
+              color: isActive('/email') ? '#2196f3' : 'inherit',
             }}
           />
         </ListItem>

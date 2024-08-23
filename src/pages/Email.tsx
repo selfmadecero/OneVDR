@@ -44,7 +44,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   },
 }));
 
-const Mail: React.FC = () => {
+const Email: React.FC = () => {
   const theme = useTheme();
   const [user] = useAuthState(auth);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
@@ -125,4 +125,4 @@ const Mail: React.FC = () => {
   );
 };
 
-export default Mail;
+export default Email;
